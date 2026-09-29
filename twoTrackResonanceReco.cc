@@ -16,6 +16,7 @@
 #include <trackbase/ActsGeometry.h>
 #include <trackbase/TrkrClusterContainer.h>
 
+#include <g4detectors/PHG4TpcGeom.h>
 #include <g4detectors/PHG4TpcGeomContainer.h>
 
 #include <ffamodules/CDBInterface.h>

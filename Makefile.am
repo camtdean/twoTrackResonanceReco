@@ -26,7 +26,7 @@ libtwoTrackResonanceReco_la_LIBADD = \
   -lfun4all \
   -ltrackbase_historic \
   -ltrackbase_historic_io \
-  -ltrackbase \
+  -ltrack_io \
   -lglobalvertex \
   -lg4detectors \
   -lffamodules

@@ -92,7 +92,7 @@ class twoTrackResonanceReco : public SubsysReco
     Vec3 position;
     Vec3 momentum;
     double charge{0};
-    double centerX{0}
+    double centerX{0};
     double centerY{0};
     double radius{0};
     double rotationSense{0};
