@@ -184,7 +184,7 @@ class twoTrackResonanceReco : public SubsysReco
   int b_daughter1_charge{0};
   float b_daughter1_pT{0};
   float b_daughter1_eta{0};
-  float b_daughter1_phi_beamline{0};
+  float b_daughter1_phi{0};
   float b_daughter1_PV_DCA{0};
   float b_daughter1_dEdx{-1};
   float b_daughter1_quality{-1};
@@ -192,7 +192,7 @@ class twoTrackResonanceReco : public SubsysReco
   int b_daughter2_charge{0};
   float b_daughter2_pT{0};
   float b_daughter2_eta{0};
-  float b_daughter2_phi_beamline{0};
+  float b_daughter2_phi{0};
   float b_daughter2_PV_DCA{0};
   float b_daughter2_dEdx{-1};
   float b_daughter2_quality{-1};

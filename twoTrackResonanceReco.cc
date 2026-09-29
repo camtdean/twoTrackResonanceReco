@@ -285,7 +285,7 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter1_charge", &b_daughter1_charge, "daughter1_charge/I");
   m_tree->Branch("daughter1_pT", &b_daughter1_pT, "daughter1_pT/F");
   m_tree->Branch("daughter1_eta", &b_daughter1_eta, "daughter1_eta/F");
-  m_tree->Branch("daughter1_phi_beamline", &b_daughter1_phi_beamline, "daughter1_phi_beamline/F");
+  m_tree->Branch("daughter1_phi", &b_daughter1_phi, "daughter1_phi/F");
   m_tree->Branch("daughter1_PV_DCA", &b_daughter1_PV_DCA, "daughter1_PV_DCA/F");
   m_tree->Branch("daughter1_dEdx", &b_daughter1_dEdx, "daughter1_dEdx/F");
   m_tree->Branch("daughter1_chi2_per_ndf", &b_daughter1_quality, "daughter1_chi2_per_ndf/F");
@@ -294,7 +294,7 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter2_charge", &b_daughter2_charge, "daughter2_charge/I");
   m_tree->Branch("daughter2_pT", &b_daughter2_pT, "daughter2_pT/F");
   m_tree->Branch("daughter2_eta", &b_daughter2_eta, "daughter2_eta/F");
-  m_tree->Branch("daughter2_phi_beamline", &b_daughter2_phi_beamline, "daughter2_phi_beamline/F");
+  m_tree->Branch("daughter2_phi", &b_daughter2_phi, "daughter2_phi/F");
   m_tree->Branch("daughter2_PV_DCA", &b_daughter2_PV_DCA, "daughter2_PV_DCA/F");
   m_tree->Branch("daughter2_dEdx", &b_daughter2_dEdx, "daughter2_dEdx/F");
   m_tree->Branch("daughter2_chi2_per_ndf", &b_daughter2_quality, "daughter2_chi2_per_ndf/F");
@@ -328,14 +328,14 @@ void twoTrackResonanceReco::resetBranches()
   b_daughter1_charge = 0;
   b_daughter1_pT = 0;
   b_daughter1_eta = 0;
-  b_daughter1_phi_beamline = 0;
+  b_daughter1_phi = 0;
   b_daughter1_PV_DCA = 0;
   b_daughter1_dEdx = -1;
   b_daughter1_quality = -1;
   b_daughter2_charge = 0;
   b_daughter2_pT = 0;
   b_daughter2_eta = 0;
-  b_daughter2_phi_beamline = 0;
+  b_daughter2_phi = 0;
   b_daughter2_PV_DCA = 0;
   b_daughter2_dEdx = -1;
   b_daughter2_quality = -1;
@@ -561,7 +561,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter1_charge = c.daughter1Track->get_charge();
         b_daughter1_pT = c.daughter1Vec.Pt();
         b_daughter1_eta = c.daughter1Track->get_eta();
-        b_daughter1_phi_beamline = c.daughter1Track->get_phi();
+        b_daughter1_phi = c.daughter1Track->get_phi();
         b_daughter1_PV_DCA = c.daughter1PvDca;
         b_daughter1_dEdx = c.dedx1;
         b_daughter1_quality = c.daughter1Track->get_chisq()/c.daughter1Track->get_ndf();
@@ -569,7 +569,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter2_charge = c.daughter2Track->get_charge();
         b_daughter2_pT = c.daughter2Vec.Pt();
         b_daughter2_eta = c.daughter2Track->get_eta();
-        b_daughter2_phi_beamline = c.daughter2Track->get_phi();
+        b_daughter2_phi = c.daughter2Track->get_phi();
         b_daughter2_PV_DCA = c.daughter2PvDca;
         b_daughter2_dEdx = c.dedx2;
         b_daughter2_quality = c.daughter2Track->get_chisq()/c.daughter2Track->get_ndf();
