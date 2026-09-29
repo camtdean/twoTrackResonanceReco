@@ -29,6 +29,7 @@
 #include <TParticlePDG.h>
 #include <TTree.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -622,6 +623,8 @@ void twoTrackResonanceReco::Print(const std::string &what) const
   std::cout << "  daughter DCA cut: " << m_track_to_track_DCA_cut << " cm" << std::endl;
   std::cout << "  flight distance cut: " << m_flight_distance_cut << " cm" << std::endl;
   std::cout << "  mother IP cut: " << m_mother_PV_DCA_cut << " cm" << std::endl;
+  std::cout << "  mother DIRA cut: " << m_dira_cut << std::endl;
+  std::cout << "  daughter IP cut: " << m_daughter_PV_DCA_cut << " cm" << std::endl;
   std::cout << "  use dE/dx PID: " << (m_use_dEdx_pid ? "true" : "false") << std::endl;
   std::cout << "  field strength: " << m_Bz << " T" << std::endl;
 }
