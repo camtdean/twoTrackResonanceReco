@@ -1,5 +1,3 @@
-// Tell emacs that this is a C++ source
-//  -*- C++ -*-.
 #ifndef TWOTRACKRESONANCERECO_H
 #define TWOTRACKRESONANCERECO_H
 
