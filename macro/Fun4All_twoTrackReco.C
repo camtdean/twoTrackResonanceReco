@@ -5,6 +5,7 @@
 #include <GlobalVariables.C>
 
 #include <G4_ActsGeom.C>
+#include <Trkr_RecoInit.C>
 
 #include <cdbobjects/CDBTTree.h>
 
@@ -14,6 +15,7 @@
 
 #include <fun4all/Fun4AllDstInputManager.h>
 #include <fun4all/Fun4AllInputManager.h>
+#include <fun4all/Fun4AllRunNodeInputManager.h>
 #include <fun4all/Fun4AllServer.h>
 #include <fun4all/Fun4AllUtils.h>
 
@@ -54,14 +56,6 @@ void Fun4All_twoTrackReco(
   std::stringstream nice_runnumber;
   nice_runnumber << std::setw(8) << std::setfill('0') << std::to_string(runnumber);
 
-  int rounded_up = 100 * (std::ceil((float) runnumber / 100));
-  std::stringstream nice_rounded_up;
-  nice_rounded_up << std::setw(8) << std::setfill('0') << std::to_string(rounded_up);
-
-  int rounded_down = 100 * (std::floor((float) runnumber / 100));
-  std::stringstream nice_rounded_down;
-  nice_rounded_down << std::setw(8) << std::setfill('0') << std::to_string(rounded_down);
-
   int segment = runseg.second;
   std::stringstream nice_segment;
   nice_segment << std::setw(5) << std::setfill('0') << std::to_string(segment);
@@ -75,26 +69,7 @@ void Fun4All_twoTrackReco(
   rc->set_StringFlag("CDB_GLOBALTAG", "2026p003_v001"); // newcdbtag
   rc->set_uint64Flag("TIMESTAMP", runnumber);
   std::string geofile = CDBInterface::instance()->getUrl("Tracking_Geometry");
-/*
-  TpcReadoutInit(runnumber);
-  std::cout << " run: " << runnumber
-            << " samples: " << TRACKING::reco_tpc_maxtime_sample
-            << " pre: " << TRACKING::reco_tpc_time_presample
-            << " vdrift: " << G4TPC::tpc_drift_velocity_reco
-            << std::endl;
-*/
 
-  // distortion calibration mode
-  /*
-   * set to true to enable residuals in the TPC with
-   * TPC clusters not participating to the ACTS track fit
-   */
-/*
-  G4TRACKING::SC_CALIBMODE = false;
-  Enable::MVTX_APPLYMISALIGNMENT = true;
-  ACTSGEOM::mvtx_applymisalignment = Enable::MVTX_APPLYMISALIGNMENT;
-  TRACKING::streaming_mode = true;
-*/
   auto *se = Fun4AllServer::instance();
   se->Verbosity(1);
 
@@ -146,4 +121,3 @@ void Fun4All_twoTrackReco(
   std::cout << "Finished" << std::endl;
   gSystem->Exit(0);
 }
-
