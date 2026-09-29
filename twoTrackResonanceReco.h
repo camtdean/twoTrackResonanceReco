@@ -73,6 +73,10 @@ class twoTrackResonanceReco : public SubsysReco
 
   void setMotherIPCut(float cut) { m_mother_PV_DCA_cut = cut; }
 
+  void setDaughterIPCut(float cut) { m_daughter_PV_DCA_cut = cut; }
+
+  void setDIRACut(float cut) { m_dira_cut = cut; }
+
   void usePID(bool use = true) { m_use_dEdx_pid = use; }
 
   void setdEdxBandWidth(float width) { m_dEdx_band_width = width; }
@@ -144,11 +148,13 @@ class twoTrackResonanceReco : public SubsysReco
   int m_daughter2_PDGID{-211};
 
   float m_min_mass{0};
-  float m_max_mass{999};
+  float m_max_mass{2};
 
   float m_track_to_track_DCA_cut{999};
   float m_flight_distance_cut{-999};
   float m_mother_PV_DCA_cut{999};
+  float m_dira_cut{-1.1};
+  float m_daughter_PV_DCA_cut{-0.1};
 
   bool m_use_dEdx_pid{false};
   bool m_can_get_dEdx{true};

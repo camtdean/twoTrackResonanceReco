@@ -438,6 +438,11 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
 
       double dira = (flightDistance > 0) ? dot(motherDir, flight) / flightDistance : 0;
 
+      if (dira < m_dira_cut)
+      {
+        continue;
+      }
+
       Vec3 toVertex = pv - sv;
       double along = dot(toVertex, motherDir);
       double motherIP = norm(toVertex - along * motherDir);
@@ -450,6 +455,11 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
       Vec3 point, direction;
       double pvDcaA = helixPointDCA(goodHelices[i], pv, point, direction);
       double pvDcaB = helixPointDCA(goodHelices[j], pv, point, direction);
+
+      if (std::min(pvDcaA, pvDcaB) < m_daughter_PV_DCA_cut)
+      {
+        continue;
+      }
 
       double dedxA = m_can_get_dEdx ? measured_dEdx(trackA) : -1;
       double dedxB = m_can_get_dEdx ? measured_dEdx(trackB) : -1;

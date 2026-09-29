@@ -47,7 +47,7 @@ R__LOAD_LIBRARY(libcdbobjects.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
 void Fun4All_twoTrackReco(
-    const int nEvents = 10000,
+    const int nEvents = 20000,
     const std::string &inputList = "my.list",
     const int nSkip = 0)
 {
