@@ -288,6 +288,7 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter1_phi_beamline", &b_daughter1_phi_beamline, "daughter1_phi_beamline/F");
   m_tree->Branch("daughter1_PV_DCA", &b_daughter1_PV_DCA, "daughter1_PV_DCA/F");
   m_tree->Branch("daughter1_dEdx", &b_daughter1_dEdx, "daughter1_dEdx/F");
+  m_tree->Branch("daughter1_chi2_per_ndf", &b_daughter1_quality, "daughter1_chi2_per_ndf/F");
 
   m_tree->Branch("daughter2_mass", &b_daughter2_mass, "daughter2_mass/F");
   m_tree->Branch("daughter2_charge", &b_daughter2_charge, "daughter2_charge/I");
@@ -296,6 +297,7 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter2_phi_beamline", &b_daughter2_phi_beamline, "daughter2_phi_beamline/F");
   m_tree->Branch("daughter2_PV_DCA", &b_daughter2_PV_DCA, "daughter2_PV_DCA/F");
   m_tree->Branch("daughter2_dEdx", &b_daughter2_dEdx, "daughter2_dEdx/F");
+  m_tree->Branch("daughter2_chi2_per_ndf", &b_daughter2_quality, "daughter2_chi2_per_ndf/F");
 
   m_tree->Branch("track_to_track_DCA", &b_track_to_track_DCA, "track_to_track_DCA/F");
   m_tree->Branch("both_charge_states_passed", &b_both_charge_states_passed, "both_charge_states_passed/O");
@@ -329,12 +331,14 @@ void twoTrackResonanceReco::resetBranches()
   b_daughter1_phi_beamline = 0;
   b_daughter1_PV_DCA = 0;
   b_daughter1_dEdx = -1;
+  b_daughter1_quality = -1;
   b_daughter2_charge = 0;
   b_daughter2_pT = 0;
   b_daughter2_eta = 0;
   b_daughter2_phi_beamline = 0;
   b_daughter2_PV_DCA = 0;
   b_daughter2_dEdx = -1;
+  b_daughter2_quality = -1;
   b_track_to_track_DCA = 0;
   b_both_charge_states_passed = false;
 }
@@ -362,6 +366,16 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
     SvtxTrack *track = iter.second;
 
     if (!hasSiliconClusters(track))
+    {
+      continue;
+    }
+
+    if (track->get_ndf() == 0 || track->get_chisq()/track->get_ndf() > m_max_track_chi2_per_ndf)
+    {
+      continue;
+    }
+
+    if (track->get_pt() < m_min_daughter_pt)
     {
       continue;
     }
@@ -550,6 +564,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter1_phi_beamline = c.daughter1Track->get_phi();
         b_daughter1_PV_DCA = c.daughter1PvDca;
         b_daughter1_dEdx = c.dedx1;
+        b_daughter1_quality = c.daughter1Track->get_chisq()/c.daughter1Track->get_ndf();
 
         b_daughter2_charge = c.daughter2Track->get_charge();
         b_daughter2_pT = c.daughter2Vec.Pt();
@@ -557,6 +572,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter2_phi_beamline = c.daughter2Track->get_phi();
         b_daughter2_PV_DCA = c.daughter2PvDca;
         b_daughter2_dEdx = c.dedx2;
+        b_daughter2_quality = c.daughter2Track->get_chisq()/c.daughter2Track->get_ndf();
 
         b_track_to_track_DCA = daughterDCA;
         b_both_charge_states_passed = bothChargeStatesPassed;
@@ -604,8 +620,10 @@ void twoTrackResonanceReco::Print(const std::string &what) const
   std::cout << "  mother mass range: [" << m_min_mass << ", " << m_max_mass << "] GeV" << std::endl;
   std::cout << "  daughter DCA cut: " << m_track_to_track_DCA_cut << " cm" << std::endl;
   std::cout << "  flight distance cut: " << m_flight_distance_cut << " cm" << std::endl;
-  std::cout << "  mother IP cut: " << m_mother_PV_DCA_cut << " cm" << std::endl;
   std::cout << "  mother DIRA cut: " << m_dira_cut << std::endl;
+  std::cout << "  mother IP cut: " << m_mother_PV_DCA_cut << " cm" << std::endl;
   std::cout << "  daughter IP cut: " << m_daughter_PV_DCA_cut << " cm" << std::endl;
+  std::cout << "  daughter quality cut: " << m_max_track_chi2_per_ndf << std::endl;
+  std::cout << "  daughter pT: " << m_min_daughter_pt << " GeV" << std::endl;
   std::cout << "  use dE/dx PID: " << (m_use_dEdx_pid ? "true" : "false") << std::endl;
 }

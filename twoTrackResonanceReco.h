@@ -67,6 +67,10 @@ class twoTrackResonanceReco : public SubsysReco
     m_max_mass = maxMass;
   }
 
+  void setMaxDaughterChi2perNDF(float cut) { m_max_track_chi2_per_ndf = cut; }
+
+  void setMinDaughterPT(float cut) { m_min_daughter_pt = cut; }
+
   void setDaughterDCACut(float cut) { m_track_to_track_DCA_cut = cut; }
 
   void setFlightDistanceCut(float cut) { m_flight_distance_cut = cut; }
@@ -109,8 +113,7 @@ class twoTrackResonanceReco : public SubsysReco
 
   bool propagateToPoint(SvtxTrack *track, const Vec3 &target, Vec3 &pos, Vec3 &mom) const;
 
-  bool buildSV(SvtxTrack *trackA, SvtxTrack *trackB,
-                                   Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB, double &dca) const;
+  bool buildSV(SvtxTrack *trackA, SvtxTrack *trackB, Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB, double &dca) const;
 
   bool trackToVertexDCA(SvtxTrack *track, const Vec3 &vertex, double &dca) const;
 
@@ -137,6 +140,9 @@ class twoTrackResonanceReco : public SubsysReco
 
   float m_min_mass{0};
   float m_max_mass{2};
+
+  float m_max_track_chi2_per_ndf{100};
+  float m_min_daughter_pt{0.0};
 
   float m_track_to_track_DCA_cut{999};
   float m_flight_distance_cut{-999};
@@ -181,6 +187,7 @@ class twoTrackResonanceReco : public SubsysReco
   float b_daughter1_phi_beamline{0};
   float b_daughter1_PV_DCA{0};
   float b_daughter1_dEdx{-1};
+  float b_daughter1_quality{-1};
 
   int b_daughter2_charge{0};
   float b_daughter2_pT{0};
@@ -188,6 +195,7 @@ class twoTrackResonanceReco : public SubsysReco
   float b_daughter2_phi_beamline{0};
   float b_daughter2_PV_DCA{0};
   float b_daughter2_dEdx{-1};
+  float b_daughter2_quality{-1};
 
   float b_track_to_track_DCA{0};
 
