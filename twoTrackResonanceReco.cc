@@ -559,7 +559,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_mother_PV_DCA = motherIP;
 
         b_daughter1_charge = c.daughter1Track->get_charge();
-        b_daughter1_pT = c.daughter1Vec.Pt();
+        b_daughter1_pT = c.daughter1Track->get_pt();
         b_daughter1_eta = c.daughter1Track->get_eta();
         b_daughter1_phi = c.daughter1Track->get_phi();
         b_daughter1_PV_DCA = c.daughter1PvDca;
@@ -567,7 +567,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter1_quality = c.daughter1Track->get_chisq()/c.daughter1Track->get_ndf();
 
         b_daughter2_charge = c.daughter2Track->get_charge();
-        b_daughter2_pT = c.daughter2Vec.Pt();
+        b_daughter2_pT = c.daughter2Track->get_pt();
         b_daughter2_eta = c.daughter2Track->get_eta();
         b_daughter2_phi = c.daughter2Track->get_phi();
         b_daughter2_PV_DCA = c.daughter2PvDca;

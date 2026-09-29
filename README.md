@@ -165,8 +165,9 @@ One row per candidate that passes every cut.
 | `mother_PV_DCA` | Mother impact parameter to the PV [cm] |
 | `daughter{1,2}_mass` | Mass assumed for that daughter hypothesis [GeV] |
 | `daughter{1,2}_charge` | Daughter track charge |
-| `daughter{1,2}_pT, _eta` | Daughter kinematics at the secondary vertex |
-| `daughter{1,2}_phi_beamline` | Daughter track phi at its DCA to the beamline |
+| `daughter{1,2}_pT` | Daughter transverse momentum from the SvtxTrack object |
+| `daughter{1,2}_eta` | Daughter pseudorapidity from the SvtxTrack object |
+| `daughter{1,2}_phi` | Daughter track phi from the SvtxTrack object |
 | `daughter{1,2}_PV_DCA` | That daughter's DCA to the primary vertex [cm] |
 | `daughter{1,2}_dEdx` | Measured TPC dE/dx (`-1` if unavailable) |
 | `daughter{1,2}_chi2_per_ndf` | That daughter's track fit `chi2/ndf` |
