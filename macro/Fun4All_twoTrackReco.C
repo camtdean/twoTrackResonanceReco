@@ -4,7 +4,7 @@
 
 #include <GlobalVariables.C>
 
-//#include <G4_ActsGeom.C>
+#include <G4_ActsGeom.C>
 
 #include <cdbobjects/CDBTTree.h>
 
@@ -26,7 +26,7 @@ R__LOAD_LIBRARY(libcdbobjects.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
 void Fun4All_twoTrackReco(
-    const int nEvents = 20000,
+    const int nEvents = 1000,
     const std::string &inputList = "my.list",
     const int nSkip = 0)
 {
@@ -74,7 +74,7 @@ void Fun4All_twoTrackReco(
   rc->set_IntFlag("RUNNUMBER", runnumber);
   rc->set_StringFlag("CDB_GLOBALTAG", "2026p003_v001"); // newcdbtag
   rc->set_uint64Flag("TIMESTAMP", runnumber);
-//  std::string geofile = CDBInterface::instance()->getUrl("Tracking_Geometry");
+  std::string geofile = CDBInterface::instance()->getUrl("Tracking_Geometry");
 /*
   TpcReadoutInit(runnumber);
   std::cout << " run: " << runnumber
@@ -97,13 +97,13 @@ void Fun4All_twoTrackReco(
 */
   auto *se = Fun4AllServer::instance();
   se->Verbosity(1);
-/*
+
   Fun4AllRunNodeInputManager *ingeo = new Fun4AllRunNodeInputManager("GeoIn");
   ingeo->AddFile(geofile);
   se->registerInputManager(ingeo);
 
   TrackingInit();
-*/
+
   Fun4AllInputManager *tracks = new Fun4AllDstInputManager("TrackInputManager");
   tracks->AddListFile(inputList.c_str());
   se->registerInputManager(tracks);
