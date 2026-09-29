@@ -483,19 +483,6 @@ void InputInit()
     }
   }
   // single particle generators
-  if (Input::DZERO)
-  {
-    for (int i = 0; i < Input::DZERO_NUMBER; ++i)
-    {
-      std::string name = "DZERO_" + std::to_string(i);
-      PHG4ParticleGeneratorD0 *dzero = new PHG4ParticleGeneratorD0(name);
-      dzero->set_pt_range(0, 5);
-      dzero->Embed(Input::EmbedId);
-      Input::DZERO_EmbedIds.insert(Input::EmbedId);
-      Input::EmbedId++;
-      INPUTGENERATOR::DZeroMesonGenerator.push_back(dzero);
-    }
-  }
   if (Input::GUN)
   {
     for (int i = 0; i < Input::GUN_NUMBER; ++i)
@@ -544,6 +531,20 @@ void InputInit()
       INPUTGENERATOR::SimpleEventGenerator.push_back(simple);
     }
   }
+  if (Input::DZERO)
+  {
+    for (int i = 0; i < Input::DZERO_NUMBER; ++i)
+    {
+      std::string name = "DZERO_" + std::to_string(i);
+      PHG4ParticleGeneratorD0 *dzero = new PHG4ParticleGeneratorD0(name);
+      dzero->set_pt_range(0, 5);
+      if (Input::SIMPLE) dzero->set_reuse_existing_vertex();
+      dzero->Embed(Input::EmbedId);
+      Input::DZERO_EmbedIds.insert(Input::EmbedId);
+      Input::EmbedId++;
+      INPUTGENERATOR::DZeroMesonGenerator.push_back(dzero);
+    }
+  }
   if (Input::UPSILON)
   {
     for (int i = 0; i < Input::UPSILON_NUMBER; ++i)
@@ -585,15 +586,6 @@ void InputRegister()
       se->registerSubsystem(generator);
     }
   }
-  if (Input::DZERO)
-  {
-    int verbosity = std::max(Input::DZERO_VERBOSITY, Input::VERBOSITY);
-    for (auto &generator : INPUTGENERATOR::DZeroMesonGenerator)
-    {
-      generator->Verbosity(verbosity);
-      se->registerSubsystem(generator);
-    }
-  }
   if (Input::GUN)
   {
     int verbosity = std::max(Input::GUN_VERBOSITY, Input::VERBOSITY);
@@ -625,6 +617,15 @@ void InputRegister()
   {
     int verbosity = std::max(Input::SIMPLE_VERBOSITY, Input::VERBOSITY);
     for (auto &generator : INPUTGENERATOR::SimpleEventGenerator)
+    {
+      generator->Verbosity(verbosity);
+      se->registerSubsystem(generator);
+    }
+  }
+  if (Input::DZERO)
+  {
+    int verbosity = std::max(Input::DZERO_VERBOSITY, Input::VERBOSITY);
+    for (auto &generator : INPUTGENERATOR::DZeroMesonGenerator)
     {
       generator->Verbosity(verbosity);
       se->registerSubsystem(generator);

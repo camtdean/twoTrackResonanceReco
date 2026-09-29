@@ -81,25 +81,12 @@ class twoTrackResonanceReco : public SubsysReco
 
   void setdEdxBandWidth(float width) { m_dEdx_band_width = width; }
 
-  void setFieldStrength(float bz) { m_Bz = bz; }
-
   void setTrackMapName(const std::string &name) { m_trackmap_node_name = name; }
   void setVertexMapName(const std::string &name) { m_vertexmap_node_name = name; }
 
   void setOutputFileName(const std::string &name) { m_outfile_name = name; }
 
  private:
-  struct SimpleHelix
-  {
-    Vec3 position;
-    Vec3 momentum;
-    double charge{0};
-    double centerX{0};
-    double centerY{0};
-    double radius{0};
-    double rotationSense{0};
-  };
-
   struct Candidate
   {
     bool passed{false};
@@ -116,15 +103,16 @@ class twoTrackResonanceReco : public SubsysReco
 
   int getNodes(PHCompositeNode *topNode);
 
-  SimpleHelix buildHelix(SvtxTrack *track) const;
-
   bool hasSiliconClusters(SvtxTrack *track) const;
 
   const SvtxVertex *findMatchingVertex(short int crossing) const;
 
-  double helixPointDCA(const SimpleHelix &helix, const Vec3 &target, Vec3 &point, Vec3 &direction) const;
+  bool propagateToPoint(SvtxTrack *track, const Vec3 &target, Vec3 &pos, Vec3 &mom) const;
 
-  double twoHelixDCA(const SimpleHelix &helixA, const SimpleHelix &helixB,Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB) const;
+  bool buildSV(SvtxTrack *trackA, SvtxTrack *trackB,
+                                   Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB, double &dca) const;
+
+  bool trackToVertexDCA(SvtxTrack *track, const Vec3 &vertex, double &dca) const;
 
   void init_dEdx_bands();
 
@@ -159,8 +147,6 @@ class twoTrackResonanceReco : public SubsysReco
   bool m_use_dEdx_pid{false};
   bool m_can_get_dEdx{true};
   float m_dEdx_band_width{0.2};
-
-  float m_Bz{1.4};
 
   TF1 *f_pion_plus{nullptr};
   TF1 *f_kaon_plus{nullptr};

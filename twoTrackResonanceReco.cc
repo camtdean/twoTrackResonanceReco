@@ -21,6 +21,8 @@
 
 #include <ffamodules/CDBInterface.h>
 
+#include <trackreco/ActsPropagator.h>
+
 #include <Math/Vector4D.h>
 
 #include <TDatabasePDG.h>
@@ -34,24 +36,6 @@
 #include <cstdlib>
 #include <limits>
 #include <vector>
-
-namespace
-{
-constexpr double kFieldConstant = 0.00299792458;  // GeV / (T * cm)
-
-double wrapAngle(double angle)
-{
-  while (angle > M_PI)
-  {
-    angle -= 2.0 * M_PI;
-  }
-  while (angle <= -M_PI)
-  {
-    angle += 2.0 * M_PI;
-  }
-  return angle;
-}
-}
 
 //____________________________________________________________________________..
 twoTrackResonanceReco::twoTrackResonanceReco(const std::string &name)
@@ -82,94 +66,82 @@ int twoTrackResonanceReco::InitRun(PHCompositeNode * /*topNode*/)
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-twoTrackResonanceReco::SimpleHelix twoTrackResonanceReco::buildHelix(SvtxTrack *track) const
+//____________________________________________________________________________..
+bool twoTrackResonanceReco::propagateToPoint(SvtxTrack *track, const Vec3 &target, Vec3 &pos, Vec3 &mom) const
 {
-  SimpleHelix helix;
+  ActsPropagator actsPropagator(m_acts_geometry);
 
-  helix.position = {track->get_x(), track->get_y(), track->get_z()};
-  helix.momentum = {track->get_px(), track->get_py(), track->get_pz()};
-  helix.charge = track->get_charge();
+  Acts::Vector3 targetVec(target.x, target.y, target.z);  // cm; ActsPropagator converts internally
+  auto surface = actsPropagator.makeVertexSurface(targetVec);
 
-  double pT = std::hypot(helix.momentum.x, helix.momentum.y);
-
-  helix.rotationSense = (helix.charge * m_Bz >= 0) ? 1.0 : -1.0;
-  helix.radius = pT / (kFieldConstant * std::fabs(helix.charge) * std::fabs(m_Bz));
-
-  helix.centerX = helix.position.x + helix.radius * helix.rotationSense * (helix.momentum.y / pT);
-  helix.centerY = helix.position.y - helix.radius * helix.rotationSense * (helix.momentum.x / pT);
-
-  return helix;
-}
-
-double twoTrackResonanceReco::helixPointDCA(const SimpleHelix &helix, const Vec3 &target, Vec3 &point, Vec3 &direction) const
-{
-  double toTargetX = target.x - helix.centerX;
-  double toTargetY = target.y - helix.centerY;
-  double distToCenter = std::hypot(toTargetX, toTargetY);
-
-  if (distToCenter < std::numeric_limits<double>::epsilon())
+  auto paramsResult = actsPropagator.makeTrackParams(track, m_vertexmap);
+  if (!paramsResult.ok())
   {
-    distToCenter = std::numeric_limits<double>::epsilon();
+    return false;
   }
 
-  double nx = toTargetX / distToCenter;
-  double ny = toTargetY / distToCenter;
-
-  point.x = helix.centerX + helix.radius * nx;
-  point.y = helix.centerY + helix.radius * ny;
-
-  double phi0 = std::atan2(helix.position.y - helix.centerY, helix.position.x - helix.centerX);
-  double phi = std::atan2(ny, nx);
-  double deltaPhi = wrapAngle(phi0 - phi);
-  double arcLength = helix.radius * helix.rotationSense * deltaPhi;
-
-  double pT = std::hypot(helix.momentum.x, helix.momentum.y);
-  point.z = helix.position.z + (helix.momentum.z / pT) * arcLength;
-
-  direction.x = pT * helix.rotationSense * ny;
-  direction.y = -pT * helix.rotationSense * nx;
-  direction.z = helix.momentum.z;
-
-  return norm(point - target);
-}
-
-double twoTrackResonanceReco::twoHelixDCA(const SimpleHelix &helixA, const SimpleHelix &helixB, Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB) const
-{
-  double dx = helixB.centerX - helixA.centerX;
-  double dy = helixB.centerY - helixA.centerY;
-  double centerDistance = std::hypot(dx, dy);
-
-  if (centerDistance < std::numeric_limits<double>::epsilon())
+  auto propResult = actsPropagator.propagateTrackFast(paramsResult.value(), surface);
+  if (!propResult.ok())
   {
-    return std::numeric_limits<double>::max();
+    return false;
   }
 
-  double nx = dx / centerDistance;
-  double ny = dy / centerDistance;
+  const auto &finalParams = propResult.value().second;
+  auto position = finalParams.position(m_acts_geometry->geometry().getGeoContext());
+  auto momentum = finalParams.momentum();
 
-  Vec3 pointA{helixA.centerX + helixA.radius * nx, helixA.centerY + helixA.radius * ny, 0};
-  Vec3 pointB{helixB.centerX - helixB.radius * nx, helixB.centerY - helixB.radius * ny, 0};
+  pos = {position.x() / Acts::UnitConstants::cm, position.y() / Acts::UnitConstants::cm, position.z() / Acts::UnitConstants::cm};
+  mom = {momentum.x(), momentum.y(), momentum.z()};
 
-  double phi0A = std::atan2(helixA.position.y - helixA.centerY, helixA.position.x - helixA.centerX);
-  double phiA = std::atan2(ny, nx);
-  double arcLengthA = helixA.radius * helixA.rotationSense * wrapAngle(phi0A - phiA);
+  return true;
+}
 
-  double phi0B = std::atan2(helixB.position.y - helixB.centerY, helixB.position.x - helixB.centerX);
-  double phiB = std::atan2(-ny, -nx);
-  double arcLengthB = helixB.radius * helixB.rotationSense * wrapAngle(phi0B - phiB);
+//____________________________________________________________________________..
+bool twoTrackResonanceReco::buildSV(SvtxTrack *trackA, SvtxTrack *trackB, Vec3 &vertex, Vec3 &momentumA, Vec3 &momentumB, double &dca) const
+{
+  Vec3 target{0.5 * (trackA->get_x() + trackB->get_x()),
+              0.5 * (trackA->get_y() + trackB->get_y()),
+              0.5 * (trackA->get_z() + trackB->get_z())};
 
-  double pTA = std::hypot(helixA.momentum.x, helixA.momentum.y);
-  double pTB = std::hypot(helixB.momentum.x, helixB.momentum.y);
+  constexpr int kMaxIterations = 10;
+  constexpr double kConvergenceTolerance = 1e-4;  // cm
 
-  pointA.z = helixA.position.z + (helixA.momentum.z / pTA) * arcLengthA;
-  pointB.z = helixB.position.z + (helixB.momentum.z / pTB) * arcLengthB;
+  Vec3 posA, posB;
+  for (int iter = 0; iter < kMaxIterations; ++iter)
+  {
+    if (!propagateToPoint(trackA, target, posA, momentumA) ||
+        !propagateToPoint(trackB, target, posB, momentumB))
+    {
+      return false;
+    }
 
-  momentumA = {pTA * helixA.rotationSense * ny, -pTA * helixA.rotationSense * nx, helixA.momentum.z};
-  momentumB = {-pTB * helixB.rotationSense * ny, pTB * helixB.rotationSense * nx, helixB.momentum.z};
+    Vec3 newTarget = 0.5 * (posA + posB);
+    double step = norm(newTarget - target);
+    target = newTarget;
 
-  vertex = 0.5 * (pointA + pointB);
+    if (step < kConvergenceTolerance)
+    {
+      break;
+    }
+  }
 
-  return norm(pointA - pointB);
+  vertex = target;
+  dca = norm(posA - posB);
+
+  return true;
+}
+
+//____________________________________________________________________________..
+bool twoTrackResonanceReco::trackToVertexDCA(SvtxTrack *track, const Vec3 &vertex, double &dca) const
+{
+  Vec3 pos, mom;
+  if (!propagateToPoint(track, vertex, pos, mom))
+  {
+    return false;
+  }
+
+  dca = norm(pos - vertex);
+  return true;
 }
 
 //____________________________________________________________________________..
@@ -224,15 +196,21 @@ int twoTrackResonanceReco::getNodes(PHCompositeNode *topNode)
     return Fun4AllReturnCodes::ABORTEVENT;
   }
 
+  m_acts_geometry = findNode::getClass<ActsGeometry>(topNode, "ActsGeometry");
+  if (!m_acts_geometry)
+  {
+    std::cout << PHWHERE << " Could not find ActsGeometry, aborting event" << std::endl;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+
   m_cluster_map = findNode::getClass<TrkrClusterContainer>(topNode, "TRKR_CLUSTER");
   if (!m_cluster_map)
   {
     m_cluster_map = findNode::getClass<TrkrClusterContainer>(topNode, "TRKR_CLUSTER_SEED");
   }
   m_geom_container = findNode::getClass<PHG4TpcGeomContainer>(topNode, "TPCGEOMCONTAINER");
-  m_acts_geometry = findNode::getClass<ActsGeometry>(topNode, "ActsGeometry");
 
-  if (!m_cluster_map || !m_geom_container || !m_acts_geometry)
+  if (!m_cluster_map || !m_geom_container)
   {
     m_can_get_dEdx = false;
   }
@@ -379,7 +357,6 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
   const double daughter2_mass = TDatabasePDG::Instance()->GetParticle(std::abs(m_daughter2_PDGID))->Mass();
 
   std::vector<SvtxTrack *> goodTracks;
-  std::vector<SimpleHelix> goodHelices;
   for (auto &iter : *m_trackmap)
   {
     SvtxTrack *track = iter.second;
@@ -390,7 +367,6 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
     }
 
     goodTracks.push_back(track);
-    goodHelices.push_back(buildHelix(track));
   }
 
   for (std::size_t i = 0; i < goodTracks.size(); ++i)
@@ -418,7 +394,11 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
       }
 
       Vec3 sv, momentumA, momentumB;
-      double daughterDCA = twoHelixDCA(goodHelices[i], goodHelices[j], sv, momentumA, momentumB);
+      double daughterDCA;
+      if (!buildSV(trackA, trackB, sv, momentumA, momentumB, daughterDCA))
+      {
+        continue;
+      }
 
       if (daughterDCA > m_track_to_track_DCA_cut)
       {
@@ -453,9 +433,11 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         continue;
       }
 
-      Vec3 point, direction;
-      double pvDcaA = helixPointDCA(goodHelices[i], pv, point, direction);
-      double pvDcaB = helixPointDCA(goodHelices[j], pv, point, direction);
+      double pvDcaA, pvDcaB;
+      if (!trackToVertexDCA(trackA, pv, pvDcaA) || !trackToVertexDCA(trackB, pv, pvDcaB))
+      {
+        continue;
+      }
 
       if (std::min(pvDcaA, pvDcaB) < m_daughter_PV_DCA_cut)
       {
@@ -479,7 +461,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         hypotheses.push_back(false);  // daughter1 (pdgID1 species) = trackB, i.e. the charge conjugate
       }
 
-      // Candidate is declared in the header, alongside SimpleHelix.
+      // Candidate is declared in the header.
       std::vector<Candidate> candidates;
       for (bool daughter1IsA : hypotheses)
       {
@@ -626,5 +608,4 @@ void twoTrackResonanceReco::Print(const std::string &what) const
   std::cout << "  mother DIRA cut: " << m_dira_cut << std::endl;
   std::cout << "  daughter IP cut: " << m_daughter_PV_DCA_cut << " cm" << std::endl;
   std::cout << "  use dE/dx PID: " << (m_use_dEdx_pid ? "true" : "false") << std::endl;
-  std::cout << "  field strength: " << m_Bz << " T" << std::endl;
 }

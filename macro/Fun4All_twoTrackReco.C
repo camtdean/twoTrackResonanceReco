@@ -5,36 +5,15 @@
 #include <GlobalVariables.C>
 
 //#include <G4_ActsGeom.C>
-//#include <G4_Magnet.C>
-//#include <QA.C>
-//#include <Trkr_Clustering.C>
-//#include <Trkr_Reco.C>
-//#include <Trkr_RecoInit.C>
-//#include <Trkr_TpcReadoutInit.C>
-
-//#include <globalvertex/GlobalVertexReco.h>
 
 #include <cdbobjects/CDBTTree.h>
 
-//#include <tpccalib/PHTpcResiduals.h>
-
-//#include <trackingqa/SiliconSeedsQA.h>
-//#include <trackingqa/TpcSeedsQA.h>
-//#include <trackingqa/TpcSiliconQA.h>
-
-//#include <trackingdiagnostics/TrackResiduals.h>
-//#include <trackingdiagnostics/TrkrNtuplizer.h>
-
-//#include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
 
 #include <ffamodules/CDBInterface.h>
 
 #include <fun4all/Fun4AllDstInputManager.h>
-//#include <fun4all/Fun4AllDstOutputManager.h>
 #include <fun4all/Fun4AllInputManager.h>
-//#include <fun4all/Fun4AllOutputManager.h>
-//#include <fun4all/Fun4AllRunNodeInputManager.h>
 #include <fun4all/Fun4AllServer.h>
 #include <fun4all/Fun4AllUtils.h>
 

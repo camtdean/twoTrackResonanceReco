@@ -26,11 +26,15 @@
 #include <phool/PHRandomSeed.h>
 #include <phool/recoConsts.h>
 
-#include <Rtypes.h> // resolves R__LOAD_LIBRARY for clang-tidy
+#include <Rtypes.h>
 #include <TROOT.h>
+#include <fstream>
+
+#include <twotrackresonancereco/twoTrackResonanceReco.h>
 
 R__LOAD_LIBRARY(libfun4all.so)
 R__LOAD_LIBRARY(libffamodules.so)
+R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
@@ -48,7 +52,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   Input::VERBOSITY = 0;
 
   Input::SIMPLE = true;
-  Input::SIMPLE_NUMBER = 2; // if you need 2 of them
+  //Input::SIMPLE_NUMBER = 2; // if you need 2 of them
   Input::SIMPLE_VERBOSITY = 1;
 
   Input::BEAM_CONFIGURATION = Input::pp_COLLISION; // Input::AA_COLLISION (default), Input::pA_COLLISION, Input::pp_COLLISION
@@ -77,11 +81,11 @@ int Fun4All_D0_sim(const int nEvents = 10
   // particle gun
   // if you run more than one of these Input::GUN_NUMBER > 1
   // add the settings for other with [1], next with [2]...
-  if (Input::GUN)
-  {
-      INPUTGENERATOR::Gun[0]->AddParticle("pi-", 0, 1, 0);
-      INPUTGENERATOR::Gun[0]->set_vtx(0, 0, 0);
-  }
+  //if (Input::GUN)
+  //{
+  //    INPUTGENERATOR::Gun[0]->AddParticle("pi-", 0, 1, 0);
+  //    INPUTGENERATOR::Gun[0]->set_vtx(0, 0, 0);
+  //}
 
   InputRegister();
 
@@ -95,15 +99,6 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   FlagHandler *flag = new FlagHandler();
   se->registerSubsystem(flag);
-
-  //======================
-  // Write the DST
-  //======================
-
-  Enable::DSTOUT = true;
-  Enable::DSTOUT_COMPRESS = true;
-  DstOut::OutputDir = outdir;
-  DstOut::OutputFile = outputFile;
 
   Enable::QA = false;
 
@@ -231,6 +226,38 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   InputManagers();
 
+  std::string output_dir = "./";  // Top dir of where the output nTuples will be written
+  std::string header = "output_twoTrackReco_Dzero_simulation_";
+  std::string processing_folder = "inReconstruction/";
+  std::string trailer = "_" + processID + ".root";
+
+  std::string Dzero_reconstruction_name = "Dzero_reco";  // Used for naming output folder, file and node
+  std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
+  std::string Dzero_output_dir = output_dir + Dzero_reconstruction_name + "/";
+  std::string Dzero_output_reco_dir = Dzero_output_dir + processing_folder;
+  std::string Dzero_output_reco_file = Dzero_output_reco_dir + Dzero_output_file_name;
+
+  std::string makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
+  system(makeDirectory.c_str());
+
+  twoTrackResonanceReco* myDzeroReco = new twoTrackResonanceReco("DzeroReco");
+  myDzeroReco->setDaughterPDGIDs(321, 211);
+  myDzeroReco->setMotherMassRange(1.7, 2.0);
+  myDzeroReco->setDaughterDCACut(0.05);
+  myDzeroReco->setDIRACut(0.85);
+  myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
+  se->registerSubsystem(myDzeroReco);
+
+
+  //======================
+  // Write the DST
+  //======================
+
+  Enable::DSTOUT = true;
+  Enable::DSTOUT_COMPRESS = true;
+  DstOut::OutputDir = output_dir;
+  DstOut::OutputFile = "DST" + trailer;
+
   if (Enable::DSTOUT)
   {
     std::string FullOutFile = DstOut::OutputDir + "/" + DstOut::OutputFile;
@@ -266,7 +293,6 @@ int Fun4All_D0_sim(const int nEvents = 10
       return 0;
   }
 
-  se->skip(skip);
   se->run(nEvents);
 
   //-----
@@ -275,6 +301,13 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   CDBInterface::instance()->Print(); // print used DB files
   se->End();
+
+  std::ifstream outfile(Dzero_output_reco_file);
+  if (outfile.good())
+  {
+    std::string moveOutput = "mv " + Dzero_output_reco_file + " " + Dzero_output_dir;
+    system(moveOutput.c_str());
+  }
 
   std::cout << "All done" << std::endl;
   delete se;
