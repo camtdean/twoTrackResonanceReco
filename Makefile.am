@@ -8,7 +8,8 @@ AM_CPPFLAGS = \
 AM_LDFLAGS = \
   -L$(libdir) \
   -L$(OFFLINE_MAIN)/lib \
-  -L$(OFFLINE_MAIN)/lib64
+  -L$(OFFLINE_MAIN)/lib64 \
+  `root-config --libs`
 
 pkginclude_HEADERS = \
   twoTrackResonanceReco.h
@@ -21,7 +22,14 @@ libtwoTrackResonanceReco_la_SOURCES = \
 
 libtwoTrackResonanceReco_la_LIBADD = \
   -lphool \
-  -lSubsysReco
+  -lSubsysReco \
+  -lfun4all \
+  -ltrackbase_historic \
+  -ltrackbase_historic_io \
+  -ltrackbase \
+  -lglobalvertex \
+  -lg4detectors \
+  -lffamodules
 
 BUILT_SOURCES = testexternals.cc
 
