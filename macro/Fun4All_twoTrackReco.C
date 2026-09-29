@@ -46,7 +46,7 @@ R__LOAD_LIBRARY(libphool.so)
 R__LOAD_LIBRARY(libcdbobjects.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
-void Fun4All_twoReco(
+void Fun4All_twoTrackReco(
     const int nEvents = 10000,
     const std::string &inputList = "my.list",
     const int nSkip = 0)
@@ -147,7 +147,7 @@ void Fun4All_twoReco(
   myKshortReco->setMotherMassRange(0.4, 0.6);
   myKshortReco->setDaughterDCACut(0.1);
   myKshortReco->setFlightDistanceCut(0.8);
-  myKshortReco->setOutputFileName("Kshort_output_reco_file");
+  myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
   se->registerSubsystem(myKshortReco);
 
   se->skip(nSkip);
