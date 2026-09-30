@@ -35,14 +35,12 @@ if [[ "${useScratch}" == true ]]; then
 fi
 
 nEvents=100
-outDir=./
-processID=$1
+inputList=$1
+nSkip=0
 
-echo running: runSims.sh $*
-echo D0 simulation with CA seeding
-root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},false\)
-echo D0 simulation with polyseeding
-root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},true\)
+echo running: runData.sh $*
+echo Running particle reconstruction with Fun4All_twoTrackReco.C
+root.exe -q -b Fun4All_twoTrackReco.C\(${nEvents},\"${inputList}\",${nSkip}\)
 
 if [[ "${useScratch}" == true ]]; then
   echo copying results back to $this_dir
@@ -52,3 +50,5 @@ if [[ "${useScratch}" == true ]]; then
 fi
 
 echo Script done
+
+# Note, to split a single run list into multiple run lists do gsplit -l 100 -d --additional-suffix=.txt run79516.list run79516_ (remove the first g on linux)

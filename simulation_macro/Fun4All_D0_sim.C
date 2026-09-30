@@ -42,7 +42,7 @@ int Fun4All_D0_sim(const int nEvents = 10
                  , bool doPolytracking = false)
 {
   std::stringstream nice_processID;
-  nice_processID << std::setw(8) << std::setfill('0') << std::to_string(processID);
+  nice_processID << std::setw(5) << std::setfill('0') << std::to_string(processID);
 
   int verbosity = 1;
 
@@ -266,7 +266,7 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   InputManagers();
 
-  std::string output_dir = "./";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
   std::string standard_or_poly = doPolytracking ? "_polyseeding_" : "_caseeding_";
   std::string header = "output_twoTrackReco_simulation";
   std::string processing_folder = "inReconstruction/";
@@ -296,7 +296,9 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   Enable::DSTOUT = true;
   Enable::DSTOUT_COMPRESS = true;
-  DstOut::OutputDir = output_dir;
+  DstOut::OutputDir = output_dir + "/DSTs/";
+  std::string makeDSTDirectory = "mkdir -p " + DstOut::OutputDir;
+  system(makeDSTDirectory.c_str());
   DstOut::OutputFile = "DST" + trailer;
 
   if (Enable::DSTOUT)

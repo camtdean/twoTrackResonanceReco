@@ -29,7 +29,7 @@ R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
 void Fun4All_twoTrackReco(
     const int nEvents = 1000,
-    const std::string &inputList = "my.list",
+    const std::string &inputList = "jobLists/run79516_00.txt",
     const int nSkip = 0)
 {
   std::ifstream file(inputList.c_str());
@@ -83,7 +83,7 @@ void Fun4All_twoTrackReco(
   tracks->AddListFile(inputList.c_str());
   se->registerInputManager(tracks);
 
-  std::string output_dir = "./";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
   std::string header = "output_twoTrackReco_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";

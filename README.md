@@ -24,7 +24,7 @@ This follows the usual autotools pattern for an sPHENIX analysis package:
 ./autogen.sh
 mkdir build && cd build
 ../configure --prefix=$MYINSTALL
-make -j4 install
+make -j $(nproc) install
 ```
 
 ## How it works
@@ -37,7 +37,7 @@ Each event, `process_event()` does the following, in order:
    absence just turns PID off for the run.
 
 2. **Track selection.** Every track in `SvtxTrackMap` is required to:
-   - have at least one MVTX or INTT cluster state — this is because the original intent is as a D0 searcher
+   - have at least one MVTX or INTT cluster state — this is because the original intent is to reconstruct D0
    - pass `chi2/ndf < ` the value set by `setMaxDaughterChi2perNDF()` (default is 100);
    - pass `pT > ` the value set by `setMinDaughterPT()` (default is 0).
 
@@ -195,3 +195,91 @@ deviations" in a KFParticle analysis are not directly portable here — you're
 choosing plain distance cuts instead, and you should expect somewhat looser
 background rejection at a given signal efficiency, particularly for cuts
 where KFParticle would use a significance. 
+
+## Simulation macro (`simulation_macro/Fun4All_D0_sim.C`)
+
+```cpp
+Fun4All_D0_sim(const int nEvents = 10, const std::string &outdir = "./",
+               const int processID = 0, bool doPolytracking = false)
+```
+
+- `processID` numbers a single simulation job. It's zero-padded to 5 digits
+  and baked into every output filename, so file names stay aligned once
+  you're running more than 9 jobs in parallel (`_00003.root` rather than
+  `_3.root`).
+- `doPolytracking` switches the TPC track-reconstruction path:
+  - `false` (default): the standard CA-seeding path — `TpcClusterizer` with
+    `SetDeadChannelMapName("TPC_DEADCHANNELMAP")` (picks up the real TPC
+    dead-channel map for the configured run number, if one exists) followed
+    by `Tracking_Reco()`.
+  - `true`: the full polytracking/polyseeding chain — silicon seeding, TPC
+    module/assembled tracks, `TpcCrossingFinder`, `Tpc_PolyClusterizer`,
+    poly track reconstruction and vertexing, then track matching. Both
+    `TpcCrossingFinder` and `Tpc_PolyClusterizer` are configured with
+    `setIsNonDistortedMC(true)`, which turns off the ExB drift effect the
+    polyline drift model would otherwise apply even for undistorted MC.
+    **This flag doesn't exist in mainline `coresoftware` yet** — it's from
+    a draft PR (sPHENIX-Collaboration/coresoftware#4455), so you need
+    `offline/packages/PHGarfield` and `offline/packages/tpctrackreco` built
+    from that branch before this macro will run.
+- Output from every reconstruction channel registered in the macro
+  (currently just `DzeroReco`) is written under a single `output/`
+  directory, with a per-channel subdirectory inside it (e.g.
+  `output/Dzero_reco_caseeding_/`, `output/Dzero_reco_polyseeding_/`).
+  Keeping everything under one `output/` parent means the batch scripts
+  below can copy results back from scratch space without needing to know
+  the names of individual reconstruction channels.
+
+## Real-data macro (`macro/Fun4All_twoTrackReco.C`)
+
+```cpp
+Fun4All_twoTrackReco(const int nEvents = 1000,
+                      const std::string &inputList = "jobLists/run79516_00.txt", const int nSkip = 0)
+```
+
+Reads a list of DST files (one per line, `inputList`), derives the run
+number and segment from the first line to build a zero-padded output
+filename, and registers a K-short reconstruction (`KshortReco`) as a
+starting example — see Quick start above for how to add more channels.
+Like the simulation macro, output goes under a single `output/` directory
+(`output/Kshort_reco/`), for the same scratch-copy-back reason. 
+
+## Batch submission with Condor
+
+Two matched pairs of scripts handle batch submission, one for real data and
+one for simulation:
+
+| | Real data | Simulation |
+|---|---|---|
+| Shell wrapper | `macro/runData.sh` | `simulation_macro/runSims.sh` |
+| Condor submit file | `macro/submitData.job` | `simulation_macro/submitSim.job` |
+
+Both shell wrappers follow the same pattern: source the sPHENIX
+environment, point `LD_LIBRARY_PATH`/`ROOT_INCLUDE_PATH` at your local
+install (`$MYINSTALL`), then invoke the matching macro with `root.exe -q -b`.
+
+**`useScratch`.** Each wrapper has a `useScratch` flag (`false` by
+default). When `true`, the script rsyncs its own directory into the job's
+private `$_CONDOR_SCRATCH_DIR` before running, and rsyncs the `output/`
+directory back out to the original shared directory afterward. This keeps
+large batch submissions from having every job read and write the same
+shared directory concurrently. With `useScratch=false`, everything just
+runs directly in `initialDir` (the shared directory named in the submit
+file) and nothing needs to be copied back.
+
+**Memory retries.** Both submit files use job retry
+patterns to avoid overconsumption of memory: `request_memory` sets the initial allocation, and
+`retry_request_memory_increase`/`retry_request_memory_max` let Condor
+automatically retry a job with more memory (up to the max) instead of
+evicting it outright. 
+
+**Wiring up the job list.**
+- `submitData.job` queues one job per line of `macro/inputDSTlists.txt`,
+  where each line is itself a path to a file listing up to 100 DST files
+  (`macro/jobLists/run<runnumber>_NN.txt`). Splitting a full run's file
+  list into chunks like this can be done with:
+  `gsplit -l 100 -d --additional-suffix=.txt run<runnumber>.list run<runnumber>_`
+  (drop the leading `g` on Linux).
+- `submitSim.job` queues jobs by process number (`Queue 1000` submits
+  processes `0`–`999`), and each process number becomes the `processID`
+  argument passed through to `Fun4All_D0_sim.C`.
