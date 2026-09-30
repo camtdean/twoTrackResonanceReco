@@ -38,32 +38,32 @@ R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
-                 , std::string processID = "0")
+                 , const int processID = 0
+                 , bool doPolytracking = false)
 {
+  std::stringstream nice_processID;
+  nice_processID << std::setw(8) << std::setfill('0') << std::to_string(processID);
+
+  int verbosity = 1;
+
   Fun4AllServer *se = Fun4AllServer::instance();
-  se->Verbosity(0);
+  se->Verbosity(verbosity);
 
   PHRandomSeed::Verbosity(1);
   CDBInterface::instance()->Verbosity(1);
 
   recoConsts *rc = recoConsts::instance();
-  //rc->set_IntFlag("RANDOMSEED", std::stoi(processID));
+  //rc->set_IntFlag("RANDOMSEED", 12345678);
 
   Input::VERBOSITY = 0;
 
   Input::SIMPLE = true;
-  //Input::SIMPLE_NUMBER = 2; // if you need 2 of them
-  Input::SIMPLE_VERBOSITY = 1;
+  Input::SIMPLE_VERBOSITY = verbosity;
 
-  Input::BEAM_CONFIGURATION = Input::pp_COLLISION; // Input::AA_COLLISION (default), Input::pA_COLLISION, Input::pp_COLLISION
+  Input::BEAM_CONFIGURATION = Input::pp_COLLISION;
 
-  // Input::GUN = true;
-  // Input::GUN_NUMBER = 3; // if you need 3 of them
-  // Input::GUN_VERBOSITY = 1;
-
-  // D0 generator
   Input::DZERO = true;
-  Input::DZERO_VERBOSITY = 0;
+  Input::DZERO_VERBOSITY = verbosity;
 
   InputInit();
 
@@ -78,18 +78,9 @@ int Fun4All_D0_sim(const int nEvents = 10
     INPUTGENERATOR::SimpleEventGenerator[0]->set_pt_range(1, 10.);
   }
 
-  // particle gun
-  // if you run more than one of these Input::GUN_NUMBER > 1
-  // add the settings for other with [1], next with [2]...
-  //if (Input::GUN)
-  //{
-  //    INPUTGENERATOR::Gun[0]->AddParticle("pi-", 0, 1, 0);
-  //    INPUTGENERATOR::Gun[0]->set_vtx(0, 0, 0);
-  //}
-
   InputRegister();
 
-  rc->set_IntFlag("RUNNUMBER", 1); //! This need to be set for G4_TrkrSimulation.C TPC()?
+  rc->set_IntFlag("RUNNUMBER", 79516); // Use a real run number to get the TPC dead maps
 
   SyncReco *sync = new SyncReco();
   se->registerSubsystem(sync);
@@ -110,24 +101,24 @@ int Fun4All_D0_sim(const int nEvents = 10
   Enable::PIPE_ABSORBER = true;
 
   Enable::MVTX = true;
-  Enable::MVTX_CELL = Enable::MVTX && true;
-  Enable::MVTX_CLUSTER = Enable::MVTX_CELL && true;
+  //Enable::MVTX_CELL = Enable::MVTX && true;
+  //Enable::MVTX_CLUSTER = Enable::MVTX_CELL && true;
 
   Enable::INTT = true;
-  Enable::INTT_CELL = Enable::INTT && true;
-  Enable::INTT_CLUSTER = Enable::INTT_CELL && true;
+  //Enable::INTT_CELL = Enable::INTT && true;
+  //Enable::INTT_CLUSTER = Enable::INTT_CELL && true;
 
   Enable::TPC = true;
   Enable::TPC_ABSORBER = false;
-  Enable::TPC_CELL = Enable::TPC && true;
-  Enable::TPC_CLUSTER = Enable::TPC_CELL && true;
+  //Enable::TPC_CELL = Enable::TPC && true;
+  //Enable::TPC_CLUSTER = Enable::TPC_CELL && true;
 
   Enable::MICROMEGAS = true;
-  Enable::MICROMEGAS_CELL = Enable::MICROMEGAS && true;
-  Enable::MICROMEGAS_CLUSTER = Enable::MICROMEGAS_CELL && true;
+  //Enable::MICROMEGAS_CELL = Enable::MICROMEGAS && true;
+  //Enable::MICROMEGAS_CLUSTER = Enable::MICROMEGAS_CELL && true;
 
-  Enable::TRACKING_TRACK = (Enable::MICROMEGAS_CLUSTER && Enable::TPC_CLUSTER && Enable::INTT_CLUSTER && Enable::MVTX_CLUSTER) && true;
-  Enable::GLOBAL_RECO = (Enable::MBDFAKE || Enable::MBDRECO || Enable::TRACKING_TRACK) && true;
+  //Enable::TRACKING_TRACK = (Enable::MICROMEGAS_CLUSTER && Enable::TPC_CLUSTER && Enable::INTT_CLUSTER && Enable::MVTX_CLUSTER) && true;
+  //Enable::GLOBAL_RECO = (Enable::MBDFAKE || Enable::MBDRECO || Enable::TRACKING_TRACK) && true;
 
   Enable::MAGNET = true;
   Enable::MAGNET_ABSORBER = true;
@@ -149,73 +140,122 @@ int Fun4All_D0_sim(const int nEvents = 10
   // Detector Division
   //------------------
 
-  if (Enable::MVTX_CELL)
-      Mvtx_Cells();
-  if (Enable::INTT_CELL)
-      Intt_Cells();
-  if (Enable::TPC_CELL)
-      TPC_Cells();
-  if (Enable::MICROMEGAS_CELL)
-      Micromegas_Cells();
+  Mvtx_Cells();
+  Intt_Cells();
+  TPC_Cells();
+  Micromegas_Cells();
 
   //--------------
   // SVTX tracking
   //--------------
-  if (Enable::TRACKING_TRACK)
-  {
-      TrackingInit();
-  }
-  if (Enable::MVTX_CLUSTER)
-      Mvtx_Clustering();
-  if (Enable::INTT_CLUSTER)
-      Intt_Clustering();
-  if (Enable::TPC_CLUSTER)
-  {
-    if (G4TPC::ENABLE_DIRECT_LASER_HITS || G4TPC::ENABLE_CENTRAL_MEMBRANE_HITS)
-    {
-      TPC_LaserClustering();
-    }
-    else
-    {
-      TPC_Clustering();
-    }
-  }
-  if (Enable::MICROMEGAS_CLUSTER)
-      Micromegas_Clustering();
+  TrackingInit();
+  Mvtx_Clustering();
+  Intt_Clustering();
+  Micromegas_Clustering();
 
-  if (Enable::TRACKING_TRACK)
+  if (doPolytracking)
   {
-      Tracking_Reco();
-  }
+    Tracking_Reco_SiliconSeed_run2pp();  
 
-  // Heavy-flavor simulation setup
-  auto vtxfinder = new PHSimpleVertexFinder;
-  vtxfinder->Verbosity(0);
-  vtxfinder->setDcaCut(0.5);
-  vtxfinder->setTrackPtCut(-99999.);
-  vtxfinder->setBeamLineCut(1);
-  vtxfinder->setTrackQualityCut(1000000000);
-  vtxfinder->setNmvtxRequired(3);
-  vtxfinder->setOutlierPairCut(0.1);
-  se->registerSubsystem(vtxfinder);
+    auto *converter = new TrackSeedTrackMapConverter("SiliconSeedToSvtxTrackMap");
+    converter->setTrackSeedName("SiliconTrackSeedContainer");
+    converter->setTrackMapName("SiliconSvtxTrackMap");
+    converter->setClusterMapName("TRKR_CLUSTER");
+    se->registerSubsystem(converter);  
+
+    auto *finder_svx = new PHSimpleVertexFinder("SiliconVertexFinder");
+    finder_svx->Verbosity(0);
+    finder_svx->setDcaCut(0.1);
+    finder_svx->setTrackPtCut(0.2);
+    finder_svx->setBeamLineCut(1);
+    finder_svx->setTrackQualityCut(500);
+    finder_svx->setNmvtxRequired(3);
+    finder_svx->setOutlierPairCut(0.1);
+    finder_svx->setTrackMapName("SiliconSvtxTrackMap");
+    finder_svx->setVertexMapName("SiliconSvtxVertexMap");
+    se->registerSubsystem(finder_svx);  
+
+    se->registerSubsystem(new Tpc_ModuleTrackReco());     // makes TPC_MODULETRACKS
+    se->registerSubsystem(new Tpc_AssembledTrackReco());  // makes TPC_ASSEMBLEDTRACKS  
+
+    auto *crossingFinder = new TpcCrossingFinder();
+    crossingFinder->Verbosity(0);
+    crossingFinder->setIsNonDistortedMC(true);
+    crossingFinder->setInputNodeName("TPC_ASSEMBLEDTRACKS");
+    crossingFinder->setOutputNodeName("TPC_CROSSING_DECISIONS");
+    crossingFinder->setVertexMapNodeName("SiliconSvtxVertexMap");  // optional, configurable
+    se->registerSubsystem(crossingFinder);  
+
+    auto *cluster = new Tpc_PolyClusterizer();  // makes TPC_POLYCLUSTERS
+    cluster->setIsNonDistortedMC(true);
+    cluster->setUseSurveyGeometry(false);
+    se->registerSubsystem(cluster);  
+
+    se->registerSubsystem(new Tpc_PolyTrackReco());      // makes TPC_POLYTRACKS
+    se->registerSubsystem(new Tpc_PolyTrackVertexer());  // makes TPC_POLYTRACKVERTICES  
+
+    se->registerSubsystem(new TpcPolyTrackSeedConverter());           // converts TPC_POLYTRACKS to TpcTrackSeed
+    se->registerSubsystem(new TpcPolyClusterTrkrClusterConverter());  // converts TPC_POLYCLUSTERS to TRKR_CLUSTER  
+    
+    Tpc_LaserEventIdentifying();
+    TPC_LaminationClustering();  
+
+    TPC_LaserClustering();
+    Reject_Laser_Events();  
+
+    Tracking_Reco_TrackMatching_run2pp();
+    
+    auto *clusterPruner = new DSTClusterPruning("DSTClusterPruning");
+    clusterPruner->pruneAllSeeds();
+    se->registerSubsystem(clusterPruner);
+
+    auto *convertertpc = new TrackSeedTrackMapConverter("TpcSeedConverter");
+    convertertpc->setTrackSeedName("TpcTrackSeedContainer");
+    convertertpc->setTrackMapName("TpcSvtxTrackMap");
+    convertertpc->setFieldMap(G4MAGNET::magfield_tracking);
+    convertertpc->Verbosity(0);
+    se->registerSubsystem(convertertpc);  
+
+    auto *findertpc = new PHSimpleVertexFinder("TpcSimpleVertexFinder");
+    findertpc->Verbosity(0);
+    findertpc->setDcaCut(1);
+    findertpc->setTrackPtCut(0.2);
+    findertpc->setBeamLineCut(1.5);
+    findertpc->setTrackQualityCut(1000000000);
+    findertpc->setRequireMVTX(false);
+    findertpc->setOutlierPairCut(0.1);
+    findertpc->setTrackMapName("TpcSvtxTrackMap");
+    findertpc->setVertexMapName("TpcSvtxVertexMap");
+    se->registerSubsystem(findertpc);
+
+    auto *vtxfinder = new PHSimpleVertexFinder;
+    vtxfinder->set_pp_mode(TRACKING::streaming_mode);
+    vtxfinder->Verbosity(verbosity);
+    se->registerSubsystem(vtxfinder);
+  }
+  else
+  {
+    ACTSGEOM::ActsGeomInit();
+
+    auto *tpcclusterizer = new TpcClusterizer;
+    tpcclusterizer->Verbosity(verbosity);
+    tpcclusterizer->SetDeadChannelMapName("TPC_DEADCHANNELMAP");
+    tpcclusterizer->set_do_hit_association(G4TPC::DO_HIT_ASSOCIATION);
+    tpcclusterizer->set_min_err_squared(0.000001);
+    se->registerSubsystem(tpcclusterizer);  
+
+    auto *tpcclustercleaner = new TpcClusterCleaner;
+    tpcclustercleaner->Verbosity(verbosity);
+    tpcclustercleaner->set_rphi_error_low_cut(0.001);
+    se->registerSubsystem(tpcclustercleaner);
+
+    Tracking_Reco();
+  }
 
   //-----------------
   // Global Vertexing
   //-----------------
-
-  if (Enable::GLOBAL_RECO && Enable::GLOBAL_FASTSIM)
-  {
-    std::cout << "You can only enable Enable::GLOBAL_RECO or Enable::GLOBAL_FASTSIM, not both" << std::endl;
-    gSystem->Exit(1);
-  }
-  if (Enable::GLOBAL_RECO)
-  {
-    Global_Reco();
-  }
-  else if (Enable::GLOBAL_FASTSIM)
-  {
-    Global_FastSim();
-  }
+  Global_Reco();
 
   // Heavy-flavor simulation setup
   build_truthreco_tables();
@@ -227,11 +267,12 @@ int Fun4All_D0_sim(const int nEvents = 10
   InputManagers();
 
   std::string output_dir = "./";  // Top dir of where the output nTuples will be written
-  std::string header = "output_twoTrackReco_Dzero_simulation_";
+  std::string standard_or_poly = doPolytracking ? "_polyseeding_" : "_caseeding_";
+  std::string header = "output_twoTrackReco_simulation";
   std::string processing_folder = "inReconstruction/";
-  std::string trailer = "_" + processID + ".root";
+  std::string trailer = "_" + nice_processID.str() + ".root";
 
-  std::string Dzero_reconstruction_name = "Dzero_reco";  // Used for naming output folder, file and node
+  std::string Dzero_reconstruction_name = "Dzero_reco" + standard_or_poly;  // Used for naming output folder, file and node
   std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
   std::string Dzero_output_dir = output_dir + Dzero_reconstruction_name + "/";
   std::string Dzero_output_reco_dir = Dzero_output_dir + processing_folder;
