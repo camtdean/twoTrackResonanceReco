@@ -40,10 +40,12 @@
 #include <fstream>
 
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
+#include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 
 R__LOAD_LIBRARY(libfun4all.so)
 R__LOAD_LIBRARY(libffamodules.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
+R__LOAD_LIBRARY(libkfparticle_sphenix.so)
 
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
@@ -258,6 +260,41 @@ int Fun4All_D0_sim(const int nEvents = 10
   se->registerSubsystem(myDzeroReco);
 
 
+  std::string KFParticle_Dzero_reconstruction_name = "Dzero_reco_KFParticle" + standard_or_poly;  // Used for naming output folder, file and node
+  std::string KFParticle_Dzero_output_file_name = header + KFParticle_Dzero_reconstruction_name + trailer;
+  std::string KFParticle_Dzero_output_dir = output_dir + KFParticle_Dzero_reconstruction_name + "/";
+  std::string KFParticle_Dzero_output_reco_dir = KFParticle_Dzero_output_dir + processing_folder;
+  std::string KFParticle_Dzero_output_reco_file = KFParticle_Dzero_output_reco_dir + KFParticle_Dzero_output_file_name;
+
+  makeDirectory = "mkdir -p " + KFParticle_Dzero_output_reco_dir;
+  system(makeDirectory.c_str());
+
+  KFParticle_sPHENIX *myDzeroKFParticle = new KFParticle_sPHENIX(KFParticle_Dzero_reconstruction_name);
+  myDzeroKFParticle->Verbosity(INT_MAX);
+  myDzeroKFParticle->setDecayDescriptor("[D0 -> K^- pi^+]cc");
+  myDzeroKFParticle->dontUseGlobalVertex(true);
+  myDzeroKFParticle->requireTrackVertexBunchCrossingMatch(true);
+  myDzeroKFParticle->constrainToPrimaryVertex();
+  myDzeroKFParticle->usePID(false);
+  myDzeroKFParticle->allowZeroMassTracks();
+  myDzeroKFParticle->magFieldFile("FIELDMAP_TRACKING");
+  myDzeroKFParticle->saveOutput(true);
+
+  myDzeroKFParticle->setMinimumTrackPT(0.0);
+  myDzeroKFParticle->setMaximumTrackchi2nDOF(100.);
+  myDzeroKFParticle->setMinMVTXhits(1);
+  myDzeroKFParticle->setMinINTThits(1);
+  myDzeroKFParticle->setMinTPChits(0);
+
+  myDzeroKFParticle->setMinimumMass(1.7);
+  myDzeroKFParticle->setMaximumMass(2.0);
+  myDzeroKFParticle->setMaximumDaughterDCA(0.05);
+  myDzeroKFParticle->setMinDIRA(0.85);
+  myDzeroKFParticle->setMotherPV_DCA(999);
+
+  myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
+  se->registerSubsystem(myDzeroKFParticle);
+
   //======================
   // Write the DST
   //======================
@@ -317,6 +354,13 @@ int Fun4All_D0_sim(const int nEvents = 10
   if (outfile.good())
   {
     std::string moveOutput = "mv " + Dzero_output_reco_file + " " + Dzero_output_dir;
+    system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileKFParticle(KFParticle_Dzero_output_reco_file);
+  if (outfileKFParticle.good())
+  {
+    std::string moveOutput = "mv " + KFParticle_Dzero_output_reco_file + " " + KFParticle_Dzero_output_dir;
     system(moveOutput.c_str());
   }
 

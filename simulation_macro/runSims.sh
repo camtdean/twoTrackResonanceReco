@@ -34,7 +34,7 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=250
+nEvents=20
 outDir=./
 processID=$1
 
