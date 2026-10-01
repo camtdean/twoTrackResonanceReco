@@ -2,9 +2,9 @@ Universe           = vanilla
 initialDir         = . 
 Executable         = $(initialDir)/runSims.sh
 PeriodicHold       = (NumJobStarts>=1 && JobStatus == 1 && !(ON_EVICT_CHECK_RequestMemory_REQUIREMENTS))
-request_memory     = 1800MB
+request_memory     = 2000MB
 retry_request_memory_increase = RequestMemory + 400
-retry_request_memory_max = 3400MB
+retry_request_memory_max = 4000MB
 Priority           = 20
 job_lease_duration = 3600
 #condorDir          = $(initialDir)
@@ -12,4 +12,4 @@ job_lease_duration = 3600
 #Error              = $(condorDir)/condor.err
 Log                = /tmp/condor-sim-$(process).log
 Arguments          = $INT(process) 
-Queue 1000
+Queue 2000

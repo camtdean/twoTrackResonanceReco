@@ -117,7 +117,7 @@ void Fun4All_twoTrackReco(
   myDzeroReco->setDIRACut(min_dira);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
   se->registerSubsystem(myDzeroReco);
-
+/*
   std::string Kshort_reconstruction_name = "Kshort_reco_twoTrackReco";  // Used for naming output folder, file and node
   std::string Kshort_output_file_name = header + Kshort_reconstruction_name + trailer;
   std::string Kshort_output_dir = output_dir + Kshort_reconstruction_name + "/";
@@ -171,7 +171,7 @@ void Fun4All_twoTrackReco(
 
   myKshortKFParticle->setOutputName(KFParticle_Kshort_output_reco_file.c_str());
   se->registerSubsystem(myKshortKFParticle);
-
+*/
   se->skip(nSkip);
   se->run(nEvents);
   se->End();
@@ -183,7 +183,7 @@ void Fun4All_twoTrackReco(
     std::string moveOutput = "mv " + Dzero_output_reco_file + " " + Dzero_output_dir;
     system(moveOutput.c_str());
   }
-
+/*
   std::ifstream outfileKshort(Kshort_output_reco_file);
   if (outfileKshort.good())
   {
@@ -197,7 +197,7 @@ void Fun4All_twoTrackReco(
     std::string moveOutput = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
     system(moveOutput.c_str());
   }
-
+*/
   delete se;
 
   std::cout << "Finished" << std::endl;

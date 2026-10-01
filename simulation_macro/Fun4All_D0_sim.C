@@ -26,6 +26,16 @@
 #include <phool/PHRandomSeed.h>
 #include <phool/recoConsts.h>
 
+#include <tpctrackreco/TpcCrossingFinder.h>
+#include <tpctrackreco/TpcPolyClusterTrkrClusterConverter.h>
+#include <tpctrackreco/TpcPolyTrackSeedConverter.h>
+#include <tpctrackreco/Tpc_AssembledTrackReco.h>
+#include <tpctrackreco/Tpc_ModuleTrackReco.h>
+#include <tpctrackreco/Tpc_PolyClusterizer.h>
+#include <tpctrackreco/Tpc_PolyTrackReco.h>
+#include <tpctrackreco/Tpc_PolyTrackVertexer.h>
+#include <trackreco/DSTClusterPruning.h>
+
 #include <Rtypes.h>
 #include <TROOT.h>
 #include <fstream>
@@ -44,7 +54,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   std::stringstream nice_processID;
   nice_processID << std::setw(5) << std::setfill('0') << std::to_string(processID);
 
-  int verbosity = 1;
+  int verbosity = 0;
 
   Fun4AllServer *se = Fun4AllServer::instance();
   se->Verbosity(verbosity);
@@ -101,24 +111,10 @@ int Fun4All_D0_sim(const int nEvents = 10
   Enable::PIPE_ABSORBER = true;
 
   Enable::MVTX = true;
-  //Enable::MVTX_CELL = Enable::MVTX && true;
-  //Enable::MVTX_CLUSTER = Enable::MVTX_CELL && true;
-
   Enable::INTT = true;
-  //Enable::INTT_CELL = Enable::INTT && true;
-  //Enable::INTT_CLUSTER = Enable::INTT_CELL && true;
-
   Enable::TPC = true;
   Enable::TPC_ABSORBER = false;
-  //Enable::TPC_CELL = Enable::TPC && true;
-  //Enable::TPC_CLUSTER = Enable::TPC_CELL && true;
-
   Enable::MICROMEGAS = true;
-  //Enable::MICROMEGAS_CELL = Enable::MICROMEGAS && true;
-  //Enable::MICROMEGAS_CLUSTER = Enable::MICROMEGAS_CELL && true;
-
-  //Enable::TRACKING_TRACK = (Enable::MICROMEGAS_CLUSTER && Enable::TPC_CLUSTER && Enable::INTT_CLUSTER && Enable::MVTX_CLUSTER) && true;
-  //Enable::GLOBAL_RECO = (Enable::MBDFAKE || Enable::MBDRECO || Enable::TRACKING_TRACK) && true;
 
   Enable::MAGNET = true;
   Enable::MAGNET_ABSORBER = true;
@@ -129,7 +125,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   Enable::BLACKHOLE = true;
 
   Enable::CDB = true;
-  rc->set_StringFlag("CDB_GLOBALTAG", CDB::global_tag);
+  rc->set_StringFlag("CDB_GLOBALTAG", "newcdbtag");//CDB::global_tag);
   rc->set_uint64Flag("TIMESTAMP", CDB::timestamp);
 
   // Initialize the selected subsystems
@@ -139,7 +135,6 @@ int Fun4All_D0_sim(const int nEvents = 10
   //------------------
   // Detector Division
   //------------------
-
   Mvtx_Cells();
   Intt_Cells();
   TPC_Cells();
@@ -267,7 +262,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   InputManagers();
 
   std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
-  std::string standard_or_poly = doPolytracking ? "_polyseeding_" : "_caseeding_";
+  std::string standard_or_poly = doPolytracking ? "_polyseeding" : "_caseeding";
   std::string header = "output_twoTrackReco_simulation";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_processID.str() + ".root";
@@ -294,12 +289,12 @@ int Fun4All_D0_sim(const int nEvents = 10
   // Write the DST
   //======================
 
-  Enable::DSTOUT = true;
+  Enable::DSTOUT = false;
   Enable::DSTOUT_COMPRESS = true;
   DstOut::OutputDir = output_dir + "/DSTs/";
   std::string makeDSTDirectory = "mkdir -p " + DstOut::OutputDir;
   system(makeDSTDirectory.c_str());
-  DstOut::OutputFile = "DST" + trailer;
+  DstOut::OutputFile = "DST" + standard_or_poly + trailer;
 
   if (Enable::DSTOUT)
   {
@@ -354,10 +349,6 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   std::cout << "All done" << std::endl;
   delete se;
-  if (Enable::PRODUCTION)
-  {
-      Production_MoveOutput();
-  }
 
   gSystem->Exit(0);
   return 0;

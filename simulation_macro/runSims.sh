@@ -34,13 +34,14 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=100
+nEvents=250
 outDir=./
 processID=$1
 
 echo running: runSims.sh $*
-echo D0 simulation with CA seeding
-root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},false\)
+#echo D0 simulation with CA seeding
+#root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},false\)
+#Polyseeding in sims didnt work, need to test locally
 echo D0 simulation with polyseeding
 root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},true\)
 
