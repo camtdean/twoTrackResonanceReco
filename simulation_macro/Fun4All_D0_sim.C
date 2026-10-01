@@ -177,6 +177,7 @@ int Fun4All_D0_sim(const int nEvents = 10
 
     auto *crossingFinder = new TpcCrossingFinder();
     crossingFinder->Verbosity(0);
+    crossingFinder->setTriggeredMode(true);
     crossingFinder->setIsNonDistortedMC(true);
     crossingFinder->setInputNodeName("TPC_ASSEMBLEDTRACKS");
     crossingFinder->setOutputNodeName("TPC_CROSSING_DECISIONS");
@@ -270,7 +271,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   system(makeDirectory.c_str());
 
   KFParticle_sPHENIX *myDzeroKFParticle = new KFParticle_sPHENIX(KFParticle_Dzero_reconstruction_name);
-  myDzeroKFParticle->Verbosity(INT_MAX);
+  myDzeroKFParticle->Verbosity(0);
   myDzeroKFParticle->setDecayDescriptor("[D0 -> K^- pi^+]cc");
   myDzeroKFParticle->dontUseGlobalVertex(true);
   myDzeroKFParticle->requireTrackVertexBunchCrossingMatch(true);
@@ -290,6 +291,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroKFParticle->setMaximumMass(2.0);
   myDzeroKFParticle->setMaximumDaughterDCA(0.05);
   myDzeroKFParticle->setMinDIRA(0.85);
+  myDzeroKFParticle->setMaximumVertexchi2nDOF(FLT_MAX);
   myDzeroKFParticle->setMotherPV_DCA(999);
 
   myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
@@ -303,7 +305,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   Enable::DSTOUT_COMPRESS = true;
   DstOut::OutputDir = output_dir + "/DSTs/";
   std::string makeDSTDirectory = "mkdir -p " + DstOut::OutputDir;
-  system(makeDSTDirectory.c_str());
+  if (Enable::DSTOUT) system(makeDSTDirectory.c_str());
   DstOut::OutputFile = "DST" + standard_or_poly + trailer;
 
   if (Enable::DSTOUT)
