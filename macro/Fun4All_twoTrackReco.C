@@ -87,10 +87,36 @@ void Fun4All_twoTrackReco(
   tracks->AddListFile(inputList.c_str());
   se->registerInputManager(tracks);
 
+  //Shared cuts
+  float mass[2] = {0.4, 0.6};
+  float track_to_track_DCA = 0.1;
+  float daughter_PV_DCA = 0.05;
+  float min_flight_distance = 0.05;
+  float min_dira = 0.85;
+
   std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
   std::string header = "output_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";
+
+  std::string Dzero_reconstruction_name = "Dzero_reco_twoTrackReco";  // Used for naming output folder, file and node
+  std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
+  std::string Dzero_output_dir = output_dir + Dzero_reconstruction_name + "/";
+  std::string Dzero_output_reco_dir = Dzero_output_dir + processing_folder;
+  std::string Dzero_output_reco_file = Dzero_output_reco_dir + Dzero_output_file_name;
+
+  std::string makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
+  system(makeDirectory.c_str());
+
+  twoTrackResonanceReco* myDzeroReco = new twoTrackResonanceReco("DzeroReco");
+  myDzeroReco->setDaughterPDGIDs(321, 211);
+  myDzeroReco->setMotherMassRange(1.7, 2.0);
+  myDzeroReco->setDaughterDCACut(track_to_track_DCA);
+  myDzeroReco->setDaughterIPCut(0.06);
+  myDzeroReco->setFlightDistanceCut(0.06);
+  myDzeroReco->setDIRACut(min_dira);
+  myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
+  se->registerSubsystem(myDzeroReco);
 
   std::string Kshort_reconstruction_name = "Kshort_reco_twoTrackReco";  // Used for naming output folder, file and node
   std::string Kshort_output_file_name = header + Kshort_reconstruction_name + trailer;
@@ -98,15 +124,8 @@ void Fun4All_twoTrackReco(
   std::string Kshort_output_reco_dir = Kshort_output_dir + processing_folder;
   std::string Kshort_output_reco_file = Kshort_output_reco_dir + Kshort_output_file_name;
 
-  std::string makeDirectory = "mkdir -p " + Kshort_output_reco_dir;
+  makeDirectory = "mkdir -p " + Kshort_output_reco_dir;
   system(makeDirectory.c_str());
-
-  //Shared cuts for K-short reco
-  float mass[2] = {0.4, 0.6};
-  float track_to_track_DCA = 0.1;
-  float daughter_PV_DCA = 0.05;
-  float min_flight_distance = 0.05;
-  float min_dira = 0.85;
 
   twoTrackResonanceReco* myKshortReco = new twoTrackResonanceReco("KshortReco");
   myKshortReco->setMotherMassRange(mass[0], mass[1]);
@@ -123,8 +142,8 @@ void Fun4All_twoTrackReco(
   std::string KFParticle_Kshort_output_reco_dir = KFParticle_Kshort_output_dir + processing_folder;
   std::string KFParticle_Kshort_output_reco_file = KFParticle_Kshort_output_reco_dir + KFParticle_Kshort_output_file_name;
 
-  std::string makeKFParticleDirectory = "mkdir -p " + KFParticle_Kshort_output_reco_dir;
-  system(makeKFParticleDirectory.c_str());
+  makeDirectory = "mkdir -p " + KFParticle_Kshort_output_reco_dir;
+  system(makeDirectory.c_str());
 
   KFParticle_sPHENIX *myKshortKFParticle = new KFParticle_sPHENIX(KFParticle_Kshort_reconstruction_name);
   myKshortKFParticle->setDecayDescriptor("K_S0 -> pi^+ pi^-");
@@ -158,8 +177,15 @@ void Fun4All_twoTrackReco(
   se->End();
   se->PrintTimer();
 
-  std::ifstream outfile(Kshort_output_reco_file);
-  if (outfile.good())
+  std::ifstream outfileDzero(Dzero_output_reco_file);
+  if (outfileDzero.good())
+  {
+    std::string moveOutput = "mv " + Dzero_output_reco_file + " " + Dzero_output_dir;
+    system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileKshort(Kshort_output_reco_file);
+  if (outfileKshort.good())
   {
     std::string moveOutput = "mv " + Kshort_output_reco_file + " " + Kshort_output_dir;
     system(moveOutput.c_str());
@@ -168,8 +194,8 @@ void Fun4All_twoTrackReco(
   std::ifstream outfileKFParticle(KFParticle_Kshort_output_reco_file);
   if (outfileKFParticle.good())
   {
-    std::string moveOutputKFParticle = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
-    system(moveOutputKFParticle.c_str());
+    std::string moveOutput = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
+    system(moveOutput.c_str());
   }
 
   delete se;
