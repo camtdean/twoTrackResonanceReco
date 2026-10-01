@@ -88,11 +88,11 @@ void Fun4All_twoTrackReco(
   se->registerInputManager(tracks);
 
   std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
-  std::string header = "output_twoTrackReco_";
+  std::string header = "output_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";
 
-  std::string Kshort_reconstruction_name = "Kshort_reco";  // Used for naming output folder, file and node
+  std::string Kshort_reconstruction_name = "Kshort_reco_twoTrackReco";  // Used for naming output folder, file and node
   std::string Kshort_output_file_name = header + Kshort_reconstruction_name + trailer;
   std::string Kshort_output_dir = output_dir + Kshort_reconstruction_name + "/";
   std::string Kshort_output_reco_dir = Kshort_output_dir + processing_folder;
@@ -130,6 +130,7 @@ void Fun4All_twoTrackReco(
   myKshortKFParticle->setDecayDescriptor("K_S0 -> pi^+ pi^-");
   myKshortKFParticle->dontUseGlobalVertex(true);
   myKshortKFParticle->requireTrackVertexBunchCrossingMatch(true);
+  myKshortKFParticle->constrainToPrimaryVertex();
   myKshortKFParticle->usePID(false);
   myKshortKFParticle->allowZeroMassTracks();
   myKshortKFParticle->magFieldFile("FIELDMAP_TRACKING");
