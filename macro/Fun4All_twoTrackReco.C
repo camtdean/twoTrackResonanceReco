@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cfloat>
 
 #include <GlobalVariables.C>
 
@@ -10,6 +11,8 @@
 #include <cdbobjects/CDBTTree.h>
 
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
+
+#include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 
 #include <ffamodules/CDBInterface.h>
 
@@ -26,6 +29,7 @@ R__LOAD_LIBRARY(libffamodules.so)
 R__LOAD_LIBRARY(libphool.so)
 R__LOAD_LIBRARY(libcdbobjects.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
+R__LOAD_LIBRARY(libkfparticle_sphenix.so)
 
 void Fun4All_twoTrackReco(
     const int nEvents = 1000,
@@ -97,13 +101,56 @@ void Fun4All_twoTrackReco(
   std::string makeDirectory = "mkdir -p " + Kshort_output_reco_dir;
   system(makeDirectory.c_str());
 
+  //Shared cuts for K-short reco
+  float mass[2] = {0.4, 0.6};
+  float track_to_track_DCA = 0.1;
+  float daughter_PV_DCA = 0.05;
+  float min_flight_distance = 0.05;
+  float min_dira = 0.85;
+
   twoTrackResonanceReco* myKshortReco = new twoTrackResonanceReco("KshortReco");
-  myKshortReco->setMotherMassRange(0.4, 0.6);
-  myKshortReco->setDaughterDCACut(0.05);
-  myKshortReco->setFlightDistanceCut(0.05);
-  myKshortReco->setDIRACut(0.85);
+  myKshortReco->setMotherMassRange(mass[0], mass[1]);
+  myKshortReco->setDaughterDCACut(track_to_track_DCA);
+  myKshortReco->setDaughterIPCut(daughter_PV_DCA);
+  myKshortReco->setFlightDistanceCut(min_flight_distance);
+  myKshortReco->setDIRACut(min_dira);
   myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
   se->registerSubsystem(myKshortReco);
+
+  std::string KFParticle_Kshort_reconstruction_name = "Kshort_reco_KFParticle";  // Used for naming output folder, file and node
+  std::string KFParticle_Kshort_output_file_name = header + KFParticle_Kshort_reconstruction_name + trailer;
+  std::string KFParticle_Kshort_output_dir = output_dir + KFParticle_Kshort_reconstruction_name + "/";
+  std::string KFParticle_Kshort_output_reco_dir = KFParticle_Kshort_output_dir + processing_folder;
+  std::string KFParticle_Kshort_output_reco_file = KFParticle_Kshort_output_reco_dir + KFParticle_Kshort_output_file_name;
+
+  std::string makeKFParticleDirectory = "mkdir -p " + KFParticle_Kshort_output_reco_dir;
+  system(makeKFParticleDirectory.c_str());
+
+  KFParticle_sPHENIX *myKshortKFParticle = new KFParticle_sPHENIX(KFParticle_Kshort_reconstruction_name);
+  myKshortKFParticle->setDecayDescriptor("K_S0 -> pi^+ pi^-");
+  myKshortKFParticle->dontUseGlobalVertex(true);
+  myKshortKFParticle->requireTrackVertexBunchCrossingMatch(true);
+  myKshortKFParticle->usePID(false);
+  myKshortKFParticle->allowZeroMassTracks();
+  myKshortKFParticle->magFieldFile("FIELDMAP_TRACKING");
+  myKshortKFParticle->saveOutput(true);
+
+  myKshortKFParticle->setMinimumTrackPT(0.0);
+  myKshortKFParticle->setMaximumTrackchi2nDOF(100.);
+  myKshortKFParticle->setMinMVTXhits(1);
+  myKshortKFParticle->setMinINTThits(1);
+  myKshortKFParticle->setMinTPChits(0);
+  myKshortKFParticle->setMinimumTrackPV_DCA(daughter_PV_DCA);
+
+  myKshortKFParticle->setMinimumMass(mass[0]);
+  myKshortKFParticle->setMaximumMass(mass[1]);
+  myKshortKFParticle->setMaximumDaughterDCA(track_to_track_DCA);
+  myKshortKFParticle->setDecayLengthRange(min_flight_distance, FLT_MAX);
+  myKshortKFParticle->setMinDIRA(min_dira);
+  myKshortKFParticle->setMotherPV_DCA(999);
+
+  myKshortKFParticle->setOutputName(KFParticle_Kshort_output_reco_file.c_str());
+  se->registerSubsystem(myKshortKFParticle);
 
   se->skip(nSkip);
   se->run(nEvents);
@@ -115,6 +162,13 @@ void Fun4All_twoTrackReco(
   {
     std::string moveOutput = "mv " + Kshort_output_reco_file + " " + Kshort_output_dir;
     system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileKFParticle(KFParticle_Kshort_output_reco_file);
+  if (outfileKFParticle.good())
+  {
+    std::string moveOutputKFParticle = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
+    system(moveOutputKFParticle.c_str());
   }
 
   delete se;
