@@ -1,7 +1,8 @@
-#include <iostream>
-#include <fstream>
-#include <string>
 #include <cfloat>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include <GlobalVariables.C>
 
@@ -36,23 +37,34 @@ void Fun4All_twoTrackReco(
     const std::string &inputList = "jobLists/run79516_00.txt",
     const int nSkip = 0)
 {
-  std::ifstream file(inputList.c_str());
-
-  if (!file.is_open())
-  {
-      std::cerr << "Error: Could not open the file." << std::endl;
-  }
+  const std::string root_ext = ".root";
+  bool isSingleFile = std::filesystem::path(inputList).extension() == ".root";
 
   std::string inputDST;
-  
-  if (std::getline(file, inputDST))
+
+  if (isSingleFile)
   {
-    std::cout << "First line: " << inputDST << std::endl;
+    inputDST = inputList;
+    std::cout << "Single input DST: " << inputDST << std::endl;
   }
-  else 
+  else
   {
-    std::cout << "The file is empty." << std::endl;
-    exit(1);
+    std::ifstream file(inputList.c_str());
+
+    if (!file.is_open())
+    {
+        std::cerr << "Error: Could not open the file." << std::endl;
+    }
+
+    if (std::getline(file, inputDST))
+    {
+      std::cout << "First line: " << inputDST << std::endl;
+    }
+    else
+    {
+      std::cout << "The file is empty." << std::endl;
+      exit(1);
+    }
   }
 
   std::pair<int, int> runseg = Fun4AllUtils::GetRunSegment(inputDST);
@@ -84,7 +96,14 @@ void Fun4All_twoTrackReco(
   TrackingInit();
 
   Fun4AllInputManager *tracks = new Fun4AllDstInputManager("TrackInputManager");
-  tracks->AddListFile(inputList.c_str());
+  if (isSingleFile)
+  {
+    tracks->AddFile(inputList.c_str());
+  }
+  else
+  {
+    tracks->AddListFile(inputList.c_str());
+  }
   se->registerInputManager(tracks);
 
   //Shared cuts

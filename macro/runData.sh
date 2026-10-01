@@ -38,9 +38,27 @@ nEvents=0
 inputList=$1
 nSkip=0
 
+runOneAtATime=true
+
 echo running: runData.sh $*
 echo Running particle reconstruction with Fun4All_twoTrackReco.C
-root.exe -q -b Fun4All_twoTrackReco.C\(${nEvents},\"${inputList}\",${nSkip}\)
+
+if [[ "${runOneAtATime}" == true ]]; then
+  dstFiles=()
+  while IFS= read -r dstLine || [[ -n "${dstLine}" ]]; do
+    [[ -z "${dstLine}" ]] && continue
+    dstFiles+=("${dstLine}")
+  done < "${inputList}"
+
+  echo "Looping over ${#dstFiles[@]} DST file(s) from ${inputList}, one Fun4All process per file"
+
+  for dstFile in "${dstFiles[@]}"; do
+    echo "Processing single DST: ${dstFile}"
+    root.exe -q -b Fun4All_twoTrackReco.C\(${nEvents},\"${dstFile}\",${nSkip}\)
+  done
+else
+  root.exe -q -b Fun4All_twoTrackReco.C\(${nEvents},\"${inputList}\",${nSkip}\)
+fi
 
 if [[ "${useScratch}" == true ]]; then
   echo copying results back to $this_dir
