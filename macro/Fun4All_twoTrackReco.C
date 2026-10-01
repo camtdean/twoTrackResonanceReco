@@ -66,7 +66,7 @@ void Fun4All_twoTrackReco(
   Enable::CDB = true;
   recoConsts *rc = recoConsts::instance();
   rc->set_IntFlag("RUNNUMBER", runnumber);
-  rc->set_StringFlag("CDB_GLOBALTAG", "2026p003_v001"); // newcdbtag
+  rc->set_StringFlag("CDB_GLOBALTAG", "newcdbtag");//2026p003_v001
   rc->set_uint64Flag("TIMESTAMP", runnumber);
   std::string geofile = CDBInterface::instance()->getUrl("Tracking_Geometry");
 
@@ -99,8 +99,9 @@ void Fun4All_twoTrackReco(
 
   twoTrackResonanceReco* myKshortReco = new twoTrackResonanceReco("KshortReco");
   myKshortReco->setMotherMassRange(0.4, 0.6);
-  myKshortReco->setDaughterDCACut(0.1);
-  myKshortReco->setFlightDistanceCut(0.8);
+  myKshortReco->setDaughterDCACut(0.05);
+  myKshortReco->setFlightDistanceCut(0.05);
+  myKshortReco->setDIRACut(0.85);
   myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
   se->registerSubsystem(myKshortReco);
 

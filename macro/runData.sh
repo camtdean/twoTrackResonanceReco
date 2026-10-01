@@ -34,7 +34,7 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=100
+nEvents=1000
 inputList=$1
 nSkip=0
 
