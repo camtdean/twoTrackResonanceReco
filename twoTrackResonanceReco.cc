@@ -246,6 +246,9 @@ void twoTrackResonanceReco::init_dEdx_bands()
   m_dEdx_bandMap.insert({-211, f_pion_minus});
   m_dEdx_bandMap.insert({-321, f_kaon_minus});
   m_dEdx_bandMap.insert({-2212, f_proton_minus});
+
+  filefit->Close();
+  delete filefit;
 }
 
 //____________________________________________________________________________..

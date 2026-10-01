@@ -10,7 +10,6 @@
 
 #include <Trkr_RecoInit.C>
 #include <Trkr_Clustering.C>
-#include <Trkr_LaserClustering.C>
 #include <Trkr_Reco.C>
 #include <Trkr_Eval.C>
 
@@ -80,7 +79,9 @@ int Fun4All_D0_sim(const int nEvents = 10
   if (Input::SIMPLE)
   {
     INPUTGENERATOR::SimpleEventGenerator[0]->add_particles("pi-", 5);
-    INPUTGENERATOR::SimpleEventGenerator[0]->set_vertex_distribution_function(PHG4SimpleEventGenerator::Gaus, PHG4SimpleEventGenerator::Gaus, PHG4SimpleEventGenerator::Gaus);
+    INPUTGENERATOR::SimpleEventGenerator[0]->set_vertex_distribution_function(PHG4SimpleEventGenerator::Gaus
+                                                                            , PHG4SimpleEventGenerator::Gaus
+                                                                            , PHG4SimpleEventGenerator::Gaus);
     INPUTGENERATOR::SimpleEventGenerator[0]->set_vertex_distribution_mean(0., 0., 0.);
     INPUTGENERATOR::SimpleEventGenerator[0]->set_vertex_distribution_width(0.01, 0.01, 5.);
     INPUTGENERATOR::SimpleEventGenerator[0]->set_eta_range(-1, 1);
@@ -121,7 +122,6 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   Enable::PLUGDOOR_ABSORBER = true;
 
-  // new settings using Enable namespace in GlobalVariables.C
   Enable::BLACKHOLE = true;
 
   Enable::CDB = true;
@@ -191,12 +191,6 @@ int Fun4All_D0_sim(const int nEvents = 10
 
     se->registerSubsystem(new TpcPolyTrackSeedConverter());           // converts TPC_POLYTRACKS to TpcTrackSeed
     se->registerSubsystem(new TpcPolyClusterTrkrClusterConverter());  // converts TPC_POLYCLUSTERS to TRKR_CLUSTER  
-    
-    Tpc_LaserEventIdentifying();
-    TPC_LaminationClustering();  
-
-    TPC_LaserClustering();
-    Reject_Laser_Events();  
 
     Tracking_Reco_TrackMatching_run2pp();
     
@@ -204,29 +198,8 @@ int Fun4All_D0_sim(const int nEvents = 10
     clusterPruner->pruneAllSeeds();
     se->registerSubsystem(clusterPruner);
 
-    auto *convertertpc = new TrackSeedTrackMapConverter("TpcSeedConverter");
-    convertertpc->setTrackSeedName("TpcTrackSeedContainer");
-    convertertpc->setTrackMapName("TpcSvtxTrackMap");
-    convertertpc->setFieldMap(G4MAGNET::magfield_tracking);
-    convertertpc->Verbosity(0);
-    se->registerSubsystem(convertertpc);  
-
-    auto *findertpc = new PHSimpleVertexFinder("TpcSimpleVertexFinder");
-    findertpc->Verbosity(0);
-    findertpc->setDcaCut(1);
-    findertpc->setTrackPtCut(0.2);
-    findertpc->setBeamLineCut(1.5);
-    findertpc->setTrackQualityCut(1000000000);
-    findertpc->setRequireMVTX(false);
-    findertpc->setOutlierPairCut(0.1);
-    findertpc->setTrackMapName("TpcSvtxTrackMap");
-    findertpc->setVertexMapName("TpcSvtxVertexMap");
-    se->registerSubsystem(findertpc);
-
-    auto *vtxfinder = new PHSimpleVertexFinder;
-    vtxfinder->set_pp_mode(TRACKING::streaming_mode);
-    vtxfinder->Verbosity(verbosity);
-    se->registerSubsystem(vtxfinder);
+    Tracking_Reco_TrackFit_run2pp();
+    Tracking_Reco_Vertex_run2pp();
   }
   else
   {
