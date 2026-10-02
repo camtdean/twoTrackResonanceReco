@@ -2,9 +2,9 @@ Universe           = vanilla
 initialDir         = . 
 Executable         = $(initialDir)/runData.sh
 PeriodicHold       = (NumJobStarts>=1 && JobStatus == 1 && !(ON_EVICT_CHECK_RequestMemory_REQUIREMENTS))
-request_memory     = 3800MB
+request_memory     = 1800MB
 retry_request_memory_increase = RequestMemory + 400
-retry_request_memory_max = 6400MB
+retry_request_memory_max = 3600MB
 Priority           = 20
 job_lease_duration = 3600
 #condorDir          = $(initialDir)

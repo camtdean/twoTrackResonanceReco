@@ -25,6 +25,8 @@
 #include <phool/PHRandomSeed.h>
 #include <phool/recoConsts.h>
 
+#include <phpythia8/PHPy8ParticleTrigger.h>
+
 #include <tpctrackreco/TpcCrossingFinder.h>
 #include <tpctrackreco/TpcPolyClusterTrkrClusterConverter.h>
 #include <tpctrackreco/TpcPolyTrackSeedConverter.h>
@@ -50,12 +52,13 @@ R__LOAD_LIBRARY(libkfparticle_sphenix.so)
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
                  , const int processID = 0
-                 , bool doPolytracking = false)
+                 , bool doPolytracking = false
+                 , bool doParticleGun = true)
 {
   std::stringstream nice_processID;
   nice_processID << std::setw(5) << std::setfill('0') << std::to_string(processID);
 
-  int verbosity = 0;
+  int verbosity = 1;
 
   Fun4AllServer *se = Fun4AllServer::instance();
   se->Verbosity(verbosity);
@@ -68,13 +71,16 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   Input::VERBOSITY = 0;
 
-  Input::SIMPLE = true;
+  Input::PYTHIA8 = !doParticleGun;
+  PYTHIA8::config_file[0] = "steeringCards/pythia8_MB_Detroit.cfg";
+
+  Input::SIMPLE = doParticleGun;
   Input::SIMPLE_VERBOSITY = verbosity;
 
-  Input::BEAM_CONFIGURATION = Input::pp_COLLISION;
-
-  Input::DZERO = true;
+  Input::DZERO = doParticleGun;
   Input::DZERO_VERBOSITY = verbosity;
+
+  Input::BEAM_CONFIGURATION = Input::pp_COLLISION;
 
   InputInit();
 
@@ -89,6 +95,29 @@ int Fun4All_D0_sim(const int nEvents = 10
     INPUTGENERATOR::SimpleEventGenerator[0]->set_eta_range(-1, 1);
     INPUTGENERATOR::SimpleEventGenerator[0]->set_phi_range(-M_PI, M_PI);
     INPUTGENERATOR::SimpleEventGenerator[0]->set_pt_range(1, 10.);
+  }
+
+  if (Input::PYTHIA8)
+  {
+    int motherID = 421;
+    vector<int> particleList = {-321, 211};
+
+    for (unsigned int i = 0; i < particleList.size(); ++i)
+    {
+      string trigger_name = "particle_trigger_" + to_string(i);
+      PHPy8ParticleTrigger * p8_hf_signal_trigger = new PHPy8ParticleTrigger(trigger_name.c_str());
+      p8_hf_signal_trigger->SetEtaHighLow(1.1, -1.1);
+      p8_hf_signal_trigger->SetPtLow(0.1);
+      //p8_hf_signal_trigger->SetParentRadialDecayVertexHigh(4);
+      p8_hf_signal_trigger->SetStableParticleOnly(false);
+      p8_hf_signal_trigger->AddParents(motherID);
+      p8_hf_signal_trigger->AddParticles(particleList[i]);
+      p8_hf_signal_trigger->PrintConfig();
+      INPUTGENERATOR::Pythia8[0]->register_trigger(p8_hf_signal_trigger);
+    }
+    INPUTGENERATOR::Pythia8[0]->set_trigger_AND();
+
+    Input::ApplysPHENIXBeamParameter(INPUTGENERATOR::Pythia8[0]);
   }
 
   InputRegister();
@@ -237,13 +266,16 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   InputManagers();
 
+  std::string gen_type = doParticleGun ? "particleGun" : "pythia8";
   std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
   std::string standard_or_poly = doPolytracking ? "_polyseeding" : "_caseeding";
-  std::string header = "output_twoTrackReco_simulation";
+  std::string kfp = "_KFParticle";
+  std::string simple = "_twoTrackReco";
+  std::string header = "output_simulation";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_processID.str() + ".root";
 
-  std::string Dzero_reconstruction_name = "Dzero_reco" + standard_or_poly;  // Used for naming output folder, file and node
+  std::string Dzero_reconstruction_name = "Dzero_reco" + simple +  standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
   std::string Dzero_output_dir = output_dir + Dzero_reconstruction_name + "/";
   std::string Dzero_output_reco_dir = Dzero_output_dir + processing_folder;
@@ -260,8 +292,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
   se->registerSubsystem(myDzeroReco);
 
-
-  std::string KFParticle_Dzero_reconstruction_name = "Dzero_reco_KFParticle" + standard_or_poly;  // Used for naming output folder, file and node
+  std::string KFParticle_Dzero_reconstruction_name = "Dzero_reco" + kfp + standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string KFParticle_Dzero_output_file_name = header + KFParticle_Dzero_reconstruction_name + trailer;
   std::string KFParticle_Dzero_output_dir = output_dir + KFParticle_Dzero_reconstruction_name + "/";
   std::string KFParticle_Dzero_output_reco_dir = KFParticle_Dzero_output_dir + processing_folder;
@@ -296,6 +327,72 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
   se->registerSubsystem(myDzeroKFParticle);
+
+  bool recoKshort = true;
+  std::string Kshort_output_dir, KFParticle_Kshort_output_dir, Kshort_output_reco_file, KFParticle_Kshort_output_reco_file;
+  if (recoKshort)
+  {
+    //Shared cuts
+    float mass[2] = {0.4, 0.6};
+    float track_to_track_DCA = 0.1;
+    float daughter_PV_DCA = 0.05;
+    float min_flight_distance = 0.05;
+    float min_dira = 0.85;
+
+    std::string Kshort_reconstruction_name = "Kshort_reco" + simple +  standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
+    std::string Kshort_output_file_name = header + Kshort_reconstruction_name + trailer;
+    Kshort_output_dir = output_dir + Kshort_reconstruction_name + "/";
+    std::string Kshort_output_reco_dir = Kshort_output_dir + processing_folder;
+    Kshort_output_reco_file = Kshort_output_reco_dir + Kshort_output_file_name;
+
+    std::string makeDirectory = "mkdir -p " + Kshort_output_reco_dir;
+    system(makeDirectory.c_str());
+
+    twoTrackResonanceReco* myKshortReco = new twoTrackResonanceReco("KshortReco");
+    myKshortReco->setMotherMassRange(mass[0], mass[1]);
+    myKshortReco->setDaughterDCACut(track_to_track_DCA);
+    myKshortReco->setDaughterIPCut(daughter_PV_DCA);
+    myKshortReco->setFlightDistanceCut(min_flight_distance);
+    myKshortReco->setDIRACut(min_dira);
+    myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
+    se->registerSubsystem(myKshortReco);
+
+    std::string KFParticle_Kshort_reconstruction_name = "Kshort_reco" + kfp + standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
+    std::string KFParticle_Kshort_output_file_name = header + KFParticle_Kshort_reconstruction_name + trailer;
+    KFParticle_Kshort_output_dir = output_dir + KFParticle_Kshort_reconstruction_name + "/";
+    std::string KFParticle_Kshort_output_reco_dir = KFParticle_Kshort_output_dir + processing_folder;
+    KFParticle_Kshort_output_reco_file = KFParticle_Kshort_output_reco_dir + KFParticle_Kshort_output_file_name;
+
+    makeDirectory = "mkdir -p " + KFParticle_Kshort_output_reco_dir;
+    system(makeDirectory.c_str());
+
+    KFParticle_sPHENIX *myKshortKFParticle = new KFParticle_sPHENIX(KFParticle_Kshort_reconstruction_name);
+    myKshortKFParticle->setDecayDescriptor("K_S0 -> pi^+ pi^-");
+    myKshortKFParticle->dontUseGlobalVertex(true);
+    myKshortKFParticle->requireTrackVertexBunchCrossingMatch(true);
+    myKshortKFParticle->constrainToPrimaryVertex();
+    myKshortKFParticle->usePID(false);
+    myKshortKFParticle->allowZeroMassTracks();
+    myKshortKFParticle->magFieldFile("FIELDMAP_TRACKING");
+    myKshortKFParticle->saveOutput(true);
+
+    myKshortKFParticle->setMinimumTrackPT(0.0);
+    myKshortKFParticle->setMaximumTrackchi2nDOF(100.);
+    myKshortKFParticle->setMinMVTXhits(1);
+    myKshortKFParticle->setMinINTThits(1);
+    myKshortKFParticle->setMinTPChits(0);
+    myKshortKFParticle->setMinimumTrackPV_DCA(daughter_PV_DCA);
+
+    myKshortKFParticle->setMinimumMass(mass[0]);
+    myKshortKFParticle->setMaximumMass(mass[1]);
+    myKshortKFParticle->setMaximumDaughterDCA(track_to_track_DCA);
+    myKshortKFParticle->setDecayLengthRange(min_flight_distance, FLT_MAX);
+    myKshortKFParticle->setMinDIRA(min_dira);
+    myKshortKFParticle->setMotherPV_DCA(999);
+
+    myKshortKFParticle->setOutputName(KFParticle_Kshort_output_reco_file.c_str());
+    se->registerSubsystem(myKshortKFParticle);
+  }
 
   //======================
   // Write the DST
@@ -365,6 +462,21 @@ int Fun4All_D0_sim(const int nEvents = 10
     std::string moveOutput = "mv " + KFParticle_Dzero_output_reco_file + " " + KFParticle_Dzero_output_dir;
     system(moveOutput.c_str());
   }
+
+  std::ifstream outfileKshort(Kshort_output_reco_file);
+  if (outfileKshort.good())
+  {
+    std::string moveOutput = "mv " + Kshort_output_reco_file + " " + Kshort_output_dir;
+    system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileKshortKFParticle(KFParticle_Kshort_output_reco_file);
+  if (outfileKshortKFParticle.good())
+  {
+    std::string moveOutput = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
+    system(moveOutput.c_str());
+  }
+
 
   std::cout << "All done" << std::endl;
   delete se;

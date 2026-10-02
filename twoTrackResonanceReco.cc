@@ -37,6 +37,8 @@
 #include <limits>
 #include <vector>
 
+int candidateCounter = 0;
+
 //____________________________________________________________________________..
 twoTrackResonanceReco::twoTrackResonanceReco(const std::string &name)
   : SubsysReco(name)
@@ -55,8 +57,8 @@ int twoTrackResonanceReco::Init(PHCompositeNode * /*topNode*/)
 //____________________________________________________________________________..
 int twoTrackResonanceReco::InitRun(PHCompositeNode * /*topNode*/)
 {
-  m_outfile = new TFile(m_outfile_name.c_str(), "recreate");
-  initTree();
+  //m_outfile = new TFile(m_outfile_name.c_str(), "recreate");
+  //initTree();
 
   if (m_use_dEdx_pid)
   {
@@ -537,6 +539,14 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         {
           continue;
         }
+
+        if (candidateCounter < 1)
+        {
+          m_outfile = new TFile(m_outfile_name.c_str(), "recreate");
+          initTree();
+        }
+
+        ++candidateCounter;
 
         resetBranches();
 

@@ -34,16 +34,16 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=250
+nEvents=20
 outDir=./
 processID=$1
+doParticleGun=false
 
 echo running: runSims.sh $*
-#echo D0 simulation with CA seeding
-#root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},false\)
-#Polyseeding in sims didnt work, need to test locally
+echo D0 simulation with CA seeding
+root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},false,${doParticleGun}\)
 echo D0 simulation with polyseeding
-root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},true\)
+root.exe -q -b Fun4All_D0_sim.C\(${nEvents},\"${outDir}\",${processID},true,${doParticleGun}\)
 
 if [[ "${useScratch}" == true ]]; then
   echo copying results back to $this_dir
