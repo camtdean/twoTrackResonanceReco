@@ -135,6 +135,8 @@ class twoTrackResonanceReco : public SubsysReco
   std::string m_vertexmap_node_name{"SvtxVertexMap"};
   std::string m_outfile_name{"twoTrackResonanceReco.root"};
 
+  int candidateCounter{0};
+
   int m_daughter1_PDGID{211};
   int m_daughter2_PDGID{-211};
 

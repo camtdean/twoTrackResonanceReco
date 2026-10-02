@@ -37,8 +37,6 @@
 #include <limits>
 #include <vector>
 
-int candidateCounter = 0;
-
 //____________________________________________________________________________..
 twoTrackResonanceReco::twoTrackResonanceReco(const std::string &name)
   : SubsysReco(name)
@@ -613,9 +611,12 @@ int twoTrackResonanceReco::EndRun(const int /*runnumber*/)
 //____________________________________________________________________________..
 int twoTrackResonanceReco::End(PHCompositeNode * /*topNode*/)
 {
-  m_outfile->cd();
-  m_tree->Write();
-  m_outfile->Close();
+  if (candidateCounter != 0)
+  {
+    m_outfile->cd();
+    m_tree->Write();
+    m_outfile->Close();
+  }
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
