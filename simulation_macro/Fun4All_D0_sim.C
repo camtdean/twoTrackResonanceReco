@@ -44,13 +44,10 @@
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
 #include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 
-#include <seed_checker/seed_checker.h>
-
 R__LOAD_LIBRARY(libfun4all.so)
 R__LOAD_LIBRARY(libffamodules.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 R__LOAD_LIBRARY(libkfparticle_sphenix.so)
-R__LOAD_LIBRARY(libseed_checker.so)
 
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
@@ -70,7 +67,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   CDBInterface::instance()->Verbosity(1);
 
   recoConsts *rc = recoConsts::instance();
-  rc->set_IntFlag("RANDOMSEED", processID);
+  //rc->set_IntFlag("RANDOMSEED", processID);
 
   Input::VERBOSITY = 0;
 
@@ -277,14 +274,6 @@ int Fun4All_D0_sim(const int nEvents = 10
   std::string header = "output_simulation";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_processID.str() + ".root";
-
-  output_dir += standard_or_poly +"/";
-  std::string makeDirectory = "mkdir -p " + output_dir;
-  system(makeDirectory.c_str());
-  seed_checker *myChecker = new seed_checker();
-  std::string seed_checker_name = output_dir + "seed_checker_" + nice_processID.str() +  standard_or_poly + ".root";
-  myChecker->setOutputFileName(seed_checker_name.c_str());
-  se->registerSubsystem(myChecker);
 
   std::string Dzero_reconstruction_name = "Dzero_reco" + simple +  standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
