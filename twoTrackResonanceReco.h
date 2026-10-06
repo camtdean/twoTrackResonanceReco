@@ -5,7 +5,9 @@
 
 #include <Math/Vector4D.h>
 
+#include <array>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <string>
 
@@ -75,6 +77,13 @@ class twoTrackResonanceReco : public SubsysReco
 
   void setFlightDistanceCut(float cut) { m_flight_distance_cut = cut; }
 
+  // Upper limit on the 3D flight distance (cm). Useful to reject pairs that come from a different vertex than the PV.
+  void setMaxFlightDistanceCut(float cut) { m_max_flight_distance_cut = cut; }
+
+  // true (default): the primary vertex is the same-crossing vertex closest in z to the secondary vertex.
+  // false: the same-crossing vertex with the best chi2/ndf (previous behaviour).
+  void matchVertexToSV(bool use = true) { m_match_vertex_to_sv = use; }
+
   void setMotherIPCut(float cut) { m_mother_PV_DCA_cut = cut; }
 
   void setDaughterIPCut(float cut) { m_daughter_PV_DCA_cut = cut; }
@@ -90,6 +99,12 @@ class twoTrackResonanceReco : public SubsysReco
 
   void setOutputFileName(const std::string &name) { m_outfile_name = name; }
 
+  // Direction of each daughter at the secondary vertex: true = silicon seed (MVTX+INTT) circle/slope, false = ACTS fit
+  void useSiliconDirection(bool use = true) { m_use_silicon_direction = use; }
+
+  // Magnitude of each daughter's momentum: true = TPC seed pT, false = ACTS fit
+  void useTpcMomentum(bool use = true) { m_use_tpc_momentum = use; }
+
  private:
   struct Candidate
   {
@@ -103,13 +118,20 @@ class twoTrackResonanceReco : public SubsysReco
     ROOT::Math::PxPyPzMVector daughter1Vec;
     ROOT::Math::PxPyPzMVector daughter2Vec;
     double motherMass{0};
+    double openingAngle{0};      // angle between the daughters' momenta used for the mass
+    double openingAngleActs{0};  // same angle using the ACTS momenta, for comparison
+    double p1{0}, p2{0};         // |p| used for the mass
+    double p1Acts{0}, p2Acts{0}; // |p| from the ACTS fit, for comparison
+    int source1{0}, source2{0};  // bit 0: silicon-seed direction used, bit 1: TPC-seed pT used
   };
 
   int getNodes(PHCompositeNode *topNode);
 
   bool hasSiliconClusters(SvtxTrack *track) const;
 
-  const SvtxVertex *findMatchingVertex(short int crossing) const;
+  // Vertex with the given beam crossing. If referenceZ is finite the one closest in z to referenceZ is returned,
+  // otherwise the one with the best chi2/ndf. nMatching, if given, is set to how many vertices have that crossing.
+  const SvtxVertex *findMatchingVertex(short int crossing, double referenceZ = std::numeric_limits<double>::quiet_NaN(), int *nMatching = nullptr) const;
 
   bool propagateToPoint(SvtxTrack *track, const Vec3 &target, Vec3 &pos, Vec3 &mom) const;
 
@@ -126,6 +148,14 @@ class twoTrackResonanceReco : public SubsysReco
   void resetBranches();
 
   std::array<double,3> unit(const Vec3& v);
+
+  // Unit vector of the track's direction at the secondary vertex, from the silicon seed (MVTX+INTT hits)
+  bool siliconDirectionAtSV(const SvtxTrack *track, const Vec3 &sv, Vec3 &dir) const;
+
+  // Momentum used for the mass: |p| from the TPC seed pT, direction from the silicon seed at the SV.
+  // Falls back to the ACTS momentum for whichever piece is unavailable. Returns a bitmask of what was used
+  // (bit 0 = silicon direction, bit 1 = TPC pT).
+  int refineMomentum(const SvtxTrack *track, const Vec3 &sv, const Vec3 &actsMomentum, Vec3 &out) const;
 
   SvtxTrackMap *m_trackmap{nullptr};
   SvtxVertexMap *m_vertexmap{nullptr};
@@ -150,9 +180,14 @@ class twoTrackResonanceReco : public SubsysReco
 
   float m_track_to_track_DCA_cut{999};
   float m_flight_distance_cut{-999};
+  float m_max_flight_distance_cut{999};
+  bool m_match_vertex_to_sv{true};
   float m_mother_PV_DCA_cut{999};
   float m_dira_cut{-1.1};
   float m_daughter_PV_DCA_cut{-0.1};
+
+  bool m_use_silicon_direction{true};
+  bool m_use_tpc_momentum{true};
 
   bool m_use_dEdx_pid{false};
   bool m_can_get_dEdx{true};
@@ -183,7 +218,12 @@ class twoTrackResonanceReco : public SubsysReco
   float b_mother_phi{0};
   float b_mother_DIRA{0};
   float b_mother_flight_distance{0};
+  int b_n_matching_vertices{0};
   float b_mother_PV_DCA{0};
+  float b_mother_DIRA_acts{0};
+  float b_mother_PV_DCA_acts{0};
+  float b_mother_opening_angle{0};
+  float b_mother_opening_angle_acts{0};
 
   int b_daughter1_charge{0};
   float b_daughter1_pT{0};
@@ -192,6 +232,9 @@ class twoTrackResonanceReco : public SubsysReco
   float b_daughter1_PV_DCA{0};
   float b_daughter1_dEdx{-1};
   float b_daughter1_quality{-1};
+  float b_daughter1_p{0};
+  float b_daughter1_p_acts{0};
+  int b_daughter1_momentum_source{0};
 
   int b_daughter2_charge{0};
   float b_daughter2_pT{0};
@@ -200,6 +243,9 @@ class twoTrackResonanceReco : public SubsysReco
   float b_daughter2_PV_DCA{0};
   float b_daughter2_dEdx{-1};
   float b_daughter2_quality{-1};
+  float b_daughter2_p{0};
+  float b_daughter2_p_acts{0};
+  int b_daughter2_momentum_source{0};
 
   float b_track_to_track_DCA{0};
 

@@ -8,6 +8,7 @@
 
 #include <trackbase_historic/SvtxTrack.h>
 #include <trackbase_historic/SvtxTrackMap.h>
+#include <trackbase_historic/TrackSeed.h>
 #include <trackbase_historic/TrackAnalysisUtils.h>
 
 #include <globalvertex/SvtxVertex.h>
@@ -36,6 +37,16 @@
 #include <cstdlib>
 #include <limits>
 #include <vector>
+
+namespace
+{
+  // Angle between two vectors; atan2 form is accurate for small angles and independent of the vector lengths
+  double openingAngle(const Vec3 &a, const Vec3 &b)
+  {
+    const Vec3 cross{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+    return std::atan2(norm(cross), dot(a, b));
+  }
+}  // namespace
 
 //____________________________________________________________________________..
 twoTrackResonanceReco::twoTrackResonanceReco(const std::string &name)
@@ -154,10 +165,11 @@ bool twoTrackResonanceReco::hasSiliconClusters(SvtxTrack *track) const
 }
 
 //____________________________________________________________________________..
-const SvtxVertex *twoTrackResonanceReco::findMatchingVertex(short int crossing) const
+const SvtxVertex *twoTrackResonanceReco::findMatchingVertex(short int crossing, double referenceZ, int *nMatching) const
 {
   const SvtxVertex *best = nullptr;
-  float bestChi2NDF = std::numeric_limits<float>::max();
+  double bestMetric = std::numeric_limits<double>::max();
+  int n = 0;
 
   for (auto &iter : *m_vertexmap)
   {
@@ -166,16 +178,30 @@ const SvtxVertex *twoTrackResonanceReco::findMatchingVertex(short int crossing) 
     {
       continue;
     }
+    ++n;
 
-    float chi2NDF = (vertex->get_ndof() > 0) ? vertex->get_chisq() / vertex->get_ndof()
-                                              : std::numeric_limits<float>::max();
-    if (chi2NDF < bestChi2NDF)
+    double metric;
+    if (std::isfinite(referenceZ))
     {
-      bestChi2NDF = chi2NDF;
+      metric = std::fabs(vertex->get_z() - referenceZ);
+    }
+    else
+    {
+      metric = (vertex->get_ndof() > 0) ? vertex->get_chisq() / vertex->get_ndof()
+                                         : std::numeric_limits<double>::max();
+    }
+
+    if (metric < bestMetric || !best)
+    {
+      bestMetric = metric;
       best = vertex;
     }
   }
 
+  if (nMatching)
+  {
+    *nMatching = n;
+  }
   return best;
 }
 
@@ -282,7 +308,12 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("mother_phi", &b_mother_phi, "mother_phi/F");
   m_tree->Branch("mother_DIRA", &b_mother_DIRA, "mother_DIRA/F");
   m_tree->Branch("mother_flight_distance", &b_mother_flight_distance, "mother_flight_distance/F");
+  m_tree->Branch("n_matching_vertices", &b_n_matching_vertices, "n_matching_vertices/I");
   m_tree->Branch("mother_PV_DCA", &b_mother_PV_DCA, "mother_PV_DCA/F");
+  m_tree->Branch("mother_DIRA_acts", &b_mother_DIRA_acts, "mother_DIRA_acts/F");
+  m_tree->Branch("mother_PV_DCA_acts", &b_mother_PV_DCA_acts, "mother_PV_DCA_acts/F");
+  m_tree->Branch("mother_opening_angle", &b_mother_opening_angle, "mother_opening_angle/F");
+  m_tree->Branch("mother_opening_angle_acts", &b_mother_opening_angle_acts, "mother_opening_angle_acts/F");
 
   m_tree->Branch("daughter1_mass", &b_daughter1_mass, "daughter1_mass/F");
   m_tree->Branch("daughter1_charge", &b_daughter1_charge, "daughter1_charge/I");
@@ -292,6 +323,9 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter1_PV_DCA", &b_daughter1_PV_DCA, "daughter1_PV_DCA/F");
   m_tree->Branch("daughter1_dEdx", &b_daughter1_dEdx, "daughter1_dEdx/F");
   m_tree->Branch("daughter1_chi2_per_ndf", &b_daughter1_quality, "daughter1_chi2_per_ndf/F");
+  m_tree->Branch("daughter1_p", &b_daughter1_p, "daughter1_p/F");
+  m_tree->Branch("daughter1_p_acts", &b_daughter1_p_acts, "daughter1_p_acts/F");
+  m_tree->Branch("daughter1_momentum_source", &b_daughter1_momentum_source, "daughter1_momentum_source/I");
 
   m_tree->Branch("daughter2_mass", &b_daughter2_mass, "daughter2_mass/F");
   m_tree->Branch("daughter2_charge", &b_daughter2_charge, "daughter2_charge/I");
@@ -301,6 +335,9 @@ void twoTrackResonanceReco::initTree()
   m_tree->Branch("daughter2_PV_DCA", &b_daughter2_PV_DCA, "daughter2_PV_DCA/F");
   m_tree->Branch("daughter2_dEdx", &b_daughter2_dEdx, "daughter2_dEdx/F");
   m_tree->Branch("daughter2_chi2_per_ndf", &b_daughter2_quality, "daughter2_chi2_per_ndf/F");
+  m_tree->Branch("daughter2_p", &b_daughter2_p, "daughter2_p/F");
+  m_tree->Branch("daughter2_p_acts", &b_daughter2_p_acts, "daughter2_p_acts/F");
+  m_tree->Branch("daughter2_momentum_source", &b_daughter2_momentum_source, "daughter2_momentum_source/I");
 
   m_tree->Branch("track_to_track_DCA", &b_track_to_track_DCA, "track_to_track_DCA/F");
   m_tree->Branch("both_charge_states_passed", &b_both_charge_states_passed, "both_charge_states_passed/O");
@@ -327,6 +364,7 @@ void twoTrackResonanceReco::resetBranches()
   b_mother_phi = 0;
   b_mother_DIRA = 0;
   b_mother_flight_distance = 0;
+  b_n_matching_vertices = 0;
   b_mother_PV_DCA = 0;
   b_daughter1_charge = 0;
   b_daughter1_pT = 0;
@@ -342,6 +380,14 @@ void twoTrackResonanceReco::resetBranches()
   b_daughter2_PV_DCA = 0;
   b_daughter2_dEdx = -1;
   b_daughter2_quality = -1;
+  b_mother_DIRA_acts = 0;
+  b_mother_PV_DCA_acts = 0;
+  b_mother_opening_angle = 0;
+  b_mother_opening_angle_acts = 0;
+  b_daughter1_p = b_daughter1_p_acts = 0;
+  b_daughter2_p = b_daughter2_p_acts = 0;
+  b_daughter1_momentum_source = 0;
+  b_daughter2_momentum_source = 0;
   b_track_to_track_DCA = 0;
   b_both_charge_states_passed = false;
 }
@@ -404,8 +450,8 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
       }
       short int crossing = trackA->get_crossing();
 
-      const SvtxVertex *primaryVertex = findMatchingVertex(crossing);
-      if (!primaryVertex)
+      // quick check that this crossing has a vertex at all; the vertex actually used is chosen once the SV is known
+      if (!findMatchingVertex(crossing))
       {
         continue;
       }
@@ -422,16 +468,37 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         continue;
       }
 
-      Vec3 pv{primaryVertex->get_x(), primaryVertex->get_y(), primaryVertex->get_z()};
-      Vec3 flight = sv - pv;
-      double flightDistance = norm(flight);
-
-      if (flightDistance < m_flight_distance_cut)
+      // The primary vertex is the same-crossing vertex closest in z to the secondary vertex, so a pair is compared with
+      // the vertex it plausibly came from, not with whichever vertex of the crossing has the best chi2/ndf.
+      int nMatchingVertices = 0;
+      const SvtxVertex *primaryVertex = findMatchingVertex(crossing, m_match_vertex_to_sv ? sv.z : std::numeric_limits<double>::quiet_NaN(), &nMatchingVertices);
+      if (!primaryVertex)
       {
         continue;
       }
 
-      Vec3 motherMomentum = momentumA + momentumB;
+      Vec3 pv{primaryVertex->get_x(), primaryVertex->get_y(), primaryVertex->get_z()};
+      Vec3 flight = sv - pv;
+      double flightDistance = norm(flight);
+
+      if (flightDistance < m_flight_distance_cut || flightDistance > m_max_flight_distance_cut)
+      {
+        continue;
+      }
+
+      // Momentum used for the cuts, the mass and the stored kinematics: |p| from the TPC seed pT, direction from the
+      // silicon (MVTX+INTT) seed evaluated at the secondary vertex. Each piece falls back to the ACTS momentum if it is
+      // unavailable (see refineMomentum). The momentum does not depend on the mass hypothesis, so it is computed once
+      // per track pair, and the mother direction used for DIRA and the mother IP is built from these same vectors.
+      Vec3 refinedMomentumA, refinedMomentumB;
+      const int sourceA = refineMomentum(trackA, sv, momentumA, refinedMomentumA);
+      const int sourceB = refineMomentum(trackB, sv, momentumB, refinedMomentumB);
+
+      Vec3 motherMomentum = refinedMomentumA + refinedMomentumB;
+      if (norm(motherMomentum) <= 0)
+      {
+        continue;
+      }
       Vec3 motherDir = (1.0 / norm(motherMomentum)) * motherMomentum;
 
       double dira = (flightDistance > 0) ? dot(motherDir, flight) / flightDistance : 0;
@@ -448,6 +515,21 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
       if (motherIP > m_mother_PV_DCA_cut)
       {
         continue;
+      }
+
+      // The same two quantities from the ACTS fit momenta, stored for comparison only (no cut is applied to them)
+      double diraActs = 0;
+      double motherIPActs = 0;
+      {
+        const Vec3 motherMomentumActs = momentumA + momentumB;
+        const double motherPActs = norm(motherMomentumActs);
+        if (motherPActs > 0)
+        {
+          const Vec3 motherDirActs = (1.0 / motherPActs) * motherMomentumActs;
+          diraActs = (flightDistance > 0) ? dot(motherDirActs, flight) / flightDistance : 0;
+          const double alongActs = dot(toVertex, motherDirActs);
+          motherIPActs = norm(toVertex - alongActs * motherDirActs);
+        }
       }
 
       double pvDcaA, pvDcaB;
@@ -485,13 +567,8 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         Candidate c;
         c.daughter1Track = daughter1IsA ? trackA : trackB;
         c.daughter2Track = daughter1IsA ? trackB : trackA;
-        //Switch to momentum measured by TPC, not ACTS
-        TrackSeed* tpcSeedA = trackA->get_tpc_seed();
-        TrackSeed* tpcSeedB = trackB->get_tpc_seed();
-        Vec3 tpcSeedAmom(tpcSeedA->get_px(), tpcSeedA->get_py(), tpcSeedA->get_pz());
-        Vec3 tpcSeedBmom(tpcSeedB->get_px(), tpcSeedB->get_py(), tpcSeedB->get_pz());
-        const Vec3 &momentum1 = daughter1IsA ? tpcSeedAmom : tpcSeedBmom;
-        const Vec3 &momentum2 = daughter1IsA ? tpcSeedBmom : tpcSeedAmom;
+        const Vec3 &momentum1 = daughter1IsA ? refinedMomentumA : refinedMomentumB;
+        const Vec3 &momentum2 = daughter1IsA ? refinedMomentumB : refinedMomentumA;
         const Vec3 &acts_momentum1 = daughter1IsA ? momentumA : momentumB;
         const Vec3 &acts_momentum2 = daughter1IsA ? momentumB : momentumA;
         c.daughter1PvDca = daughter1IsA ? pvDcaA : pvDcaB;
@@ -501,19 +578,20 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
 
         c.daughter1Vec = ROOT::Math::PxPyPzMVector(momentum1.x, momentum1.y, momentum1.z, daughter1_mass);
         c.daughter2Vec = ROOT::Math::PxPyPzMVector(momentum2.x, momentum2.y, momentum2.z, daughter2_mass);
-        //c.motherMass = (c.daughter1Vec + c.daughter2Vec).M();
-        
-        double p1 = std::sqrt(momentum1.x*momentum1.x + momentum1.y*momentum1.y + momentum1.z*momentum1.z);
-        double p2 = std::sqrt(momentum2.x*momentum2.x + momentum2.y*momentum2.y + momentum2.z*momentum2.z);
-        std::array<double,3> u1 = unit(acts_momentum1);
-        std::array<double,3> u2 = unit(acts_momentum2);
-        
-        double cosTheta = u1[0]*u2[0] + u1[1]*u2[1] + u1[2]*u2[2];
-        double E1 = std::sqrt(p1*p1 + daughter1_mass*daughter1_mass);
-        double E2 = std::sqrt(p2*p2 + daughter2_mass*daughter2_mass);
-        
-        double m2 = daughter1_mass*daughter1_mass + daughter2_mass*daughter2_mass + 2.0*(E1*E2 - p1*p2*cosTheta);
-        c.motherMass = std::sqrt(std::max(0.0, m2));
+
+        // With each momentum built as |p_TPC| along the silicon-seed direction at the SV, the invariant mass of the pair
+        // is exactly m^2 = m1^2 + m2^2 + 2 (E1 E2 - p1 p2 cos(opening angle)), so no separate formula is needed and
+        // the mother pT/eta/phi branches stay consistent with the mass.
+        c.motherMass = (c.daughter1Vec + c.daughter2Vec).M();
+
+        c.openingAngle = openingAngle(momentum1, momentum2);
+        c.openingAngleActs = openingAngle(acts_momentum1, acts_momentum2);
+        c.p1 = norm(momentum1);
+        c.p2 = norm(momentum2);
+        c.p1Acts = norm(acts_momentum1);
+        c.p2Acts = norm(acts_momentum2);
+        c.source1 = daughter1IsA ? sourceA : sourceB;
+        c.source2 = daughter1IsA ? sourceB : sourceA;
 
         if (c.motherMass >= m_min_mass && c.motherMass <= m_max_mass)
         {
@@ -586,7 +664,12 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_mother_phi = motherVec.Phi();
         b_mother_DIRA = dira;
         b_mother_flight_distance = flightDistance;
+        b_n_matching_vertices = nMatchingVertices;
         b_mother_PV_DCA = motherIP;
+        b_mother_DIRA_acts = diraActs;
+        b_mother_PV_DCA_acts = motherIPActs;
+        b_mother_opening_angle = c.openingAngle;
+        b_mother_opening_angle_acts = c.openingAngleActs;
 
         b_daughter1_charge = c.daughter1Track->get_charge();
         b_daughter1_pT = c.daughter1Track->get_pt();
@@ -595,6 +678,9 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter1_PV_DCA = c.daughter1PvDca;
         b_daughter1_dEdx = c.dedx1;
         b_daughter1_quality = c.daughter1Track->get_chisq()/c.daughter1Track->get_ndf();
+        b_daughter1_p = c.p1;
+        b_daughter1_p_acts = c.p1Acts;
+        b_daughter1_momentum_source = c.source1;
 
         b_daughter2_charge = c.daughter2Track->get_charge();
         b_daughter2_pT = c.daughter2Track->get_pt();
@@ -603,6 +689,9 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         b_daughter2_PV_DCA = c.daughter2PvDca;
         b_daughter2_dEdx = c.dedx2;
         b_daughter2_quality = c.daughter2Track->get_chisq()/c.daughter2Track->get_ndf();
+        b_daughter2_p = c.p2;
+        b_daughter2_p_acts = c.p2Acts;
+        b_daughter2_momentum_source = c.source2;
 
         b_track_to_track_DCA = daughterDCA;
         b_both_charge_states_passed = bothChargeStatesPassed;
@@ -615,11 +704,90 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-std::array<double,3> twoTrackResonanceReco::unit(const Vec3& v) 
+bool twoTrackResonanceReco::siliconDirectionAtSV(const SvtxTrack *track, const Vec3 &sv, Vec3 &dir) const
+{
+  const TrackSeed *siSeed = track->get_silicon_seed();
+  if (!siSeed)
+  {
+    return false;
+  }
+
+  // Circle (centre X0,Y0 in the transverse plane), stored azimuth at the point of closest approach to the origin,
+  // and polar angle from the dz/dr slope. All come from a fit to the silicon (MVTX + INTT) clusters only.
+  const double X0 = siSeed->get_X0();
+  const double Y0 = siSeed->get_Y0();
+  const double storedPhi = siSeed->get_phi();
+  const double theta = siSeed->get_theta();
+  if (!std::isfinite(X0) || !std::isfinite(Y0) || !std::isfinite(storedPhi) || !std::isfinite(theta))
+  {
+    return false;
+  }
+
+  // Moving along a circle rotates the tangent by the same angle as the radius vector from the centre, so the
+  // tangent at the SV is the radial angle of the SV +/- 90 degrees. The sign (clockwise or counter-clockwise) is the
+  // one whose result lies closest to the stored azimuth, which is evaluated close to the SV.
+  const double alpha = std::atan2(sv.y - Y0, sv.x - X0);
+  const double phiCCW = alpha + M_PI / 2.0;
+  const double phiCW = alpha - M_PI / 2.0;
+  const double phi = (std::fabs(std::remainder(phiCCW - storedPhi, 2.0 * M_PI)) <
+                      std::fabs(std::remainder(phiCW - storedPhi, 2.0 * M_PI)))
+                         ? phiCCW
+                         : phiCW;
+
+  // The polar angle does not change along a helix
+  dir = Vec3{std::sin(theta) * std::cos(phi), std::sin(theta) * std::sin(phi), std::cos(theta)};
+  return true;
+}
+
+//____________________________________________________________________________..
+int twoTrackResonanceReco::refineMomentum(const SvtxTrack *track, const Vec3 &sv, const Vec3 &actsMomentum, Vec3 &out) const
+{
+  int source = 0;
+  const double actsP = norm(actsMomentum);
+
+  // direction: ACTS fit at the SV unless the silicon seed is usable
+  Vec3 dir = (actsP > 0) ? (1.0 / actsP) * actsMomentum : Vec3{0, 0, 1};
+  if (m_use_silicon_direction)
+  {
+    Vec3 siliconDir;
+    if (siliconDirectionAtSV(track, sv, siliconDir))
+    {
+      dir = siliconDir;
+      source |= 1;
+    }
+  }
+
+  // magnitude: transverse momentum from the TPC seed, converted to |p| with the polar angle of the direction above
+  double p = actsP;
+  if (m_use_tpc_momentum)
+  {
+    const TrackSeed *tpcSeed = track->get_tpc_seed();
+    if (tpcSeed)
+    {
+      const double pt = tpcSeed->get_pt();
+      const double sinTheta = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+      if (std::isfinite(pt) && pt > 0 && sinTheta > 1e-6)
+      {
+        p = pt / sinTheta;
+        source |= 2;
+      }
+    }
+  }
+
+  out = p * dir;
+  return source;
+}
+
+//____________________________________________________________________________..
+std::array<double,3> twoTrackResonanceReco::unit(const Vec3& v)
 {
   const double p = std::sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+  if (p <= 0)
+  {
+    return std::array<double,3>{0, 0, 0};
+  }
   return std::array<double,3>{v.x/p, v.y/p, v.z/p};
-};
+}
 
 //____________________________________________________________________________..
 int twoTrackResonanceReco::ResetEvent(PHCompositeNode * /*topNode*/)
