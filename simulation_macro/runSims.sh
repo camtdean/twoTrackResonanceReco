@@ -34,7 +34,7 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=20
+nEvents=125
 outDir=./
 processID=$1
 doParticleGun=false

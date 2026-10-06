@@ -125,6 +125,8 @@ class twoTrackResonanceReco : public SubsysReco
 
   void resetBranches();
 
+  std::array<double,3> unit(const Vec3& v);
+
   SvtxTrackMap *m_trackmap{nullptr};
   SvtxVertexMap *m_vertexmap{nullptr};
   TrkrClusterContainer *m_cluster_map{nullptr};

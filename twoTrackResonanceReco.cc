@@ -485,8 +485,15 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
         Candidate c;
         c.daughter1Track = daughter1IsA ? trackA : trackB;
         c.daughter2Track = daughter1IsA ? trackB : trackA;
-        const Vec3 &momentum1 = daughter1IsA ? momentumA : momentumB;
-        const Vec3 &momentum2 = daughter1IsA ? momentumB : momentumA;
+        //Switch to momentum measured by TPC, not ACTS
+        TrackSeed* tpcSeedA = trackA->get_tpc_seed();
+        TrackSeed* tpcSeedB = trackB->get_tpc_seed();
+        Vec3 tpcSeedAmom(tpcSeedA->get_px(), tpcSeedA->get_py(), tpcSeedA->get_pz());
+        Vec3 tpcSeedBmom(tpcSeedB->get_px(), tpcSeedB->get_py(), tpcSeedB->get_pz());
+        const Vec3 &momentum1 = daughter1IsA ? tpcSeedAmom : tpcSeedBmom;
+        const Vec3 &momentum2 = daughter1IsA ? tpcSeedBmom : tpcSeedAmom;
+        const Vec3 &acts_momentum1 = daughter1IsA ? momentumA : momentumB;
+        const Vec3 &acts_momentum2 = daughter1IsA ? momentumB : momentumA;
         c.daughter1PvDca = daughter1IsA ? pvDcaA : pvDcaB;
         c.daughter2PvDca = daughter1IsA ? pvDcaB : pvDcaA;
         c.dedx1 = daughter1IsA ? dedxA : dedxB;
@@ -494,7 +501,19 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
 
         c.daughter1Vec = ROOT::Math::PxPyPzMVector(momentum1.x, momentum1.y, momentum1.z, daughter1_mass);
         c.daughter2Vec = ROOT::Math::PxPyPzMVector(momentum2.x, momentum2.y, momentum2.z, daughter2_mass);
-        c.motherMass = (c.daughter1Vec + c.daughter2Vec).M();
+        //c.motherMass = (c.daughter1Vec + c.daughter2Vec).M();
+        
+        double p1 = std::sqrt(momentum1.x*momentum1.x + momentum1.y*momentum1.y + momentum1.z*momentum1.z);
+        double p2 = std::sqrt(momentum2.x*momentum2.x + momentum2.y*momentum2.y + momentum2.z*momentum2.z);
+        std::array<double,3> u1 = unit(acts_momentum1);
+        std::array<double,3> u2 = unit(acts_momentum2);
+        
+        double cosTheta = u1[0]*u2[0] + u1[1]*u2[1] + u1[2]*u2[2];
+        double E1 = std::sqrt(p1*p1 + daughter1_mass*daughter1_mass);
+        double E2 = std::sqrt(p2*p2 + daughter2_mass*daughter2_mass);
+        
+        double m2 = daughter1_mass*daughter1_mass + daughter2_mass*daughter2_mass + 2.0*(E1*E2 - p1*p2*cosTheta);
+        c.motherMass = std::sqrt(std::max(0.0, m2));
 
         if (c.motherMass >= m_min_mass && c.motherMass <= m_max_mass)
         {
@@ -595,6 +614,12 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
 
   return Fun4AllReturnCodes::EVENT_OK;
 }
+
+std::array<double,3> twoTrackResonanceReco::unit(const Vec3& v) 
+{
+  const double p = std::sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+  return std::array<double,3>{v.x/p, v.y/p, v.z/p};
+};
 
 //____________________________________________________________________________..
 int twoTrackResonanceReco::ResetEvent(PHCompositeNode * /*topNode*/)
