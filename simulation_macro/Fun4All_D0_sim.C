@@ -44,10 +44,13 @@
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
 #include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 
+#include <seed_checker/seed_checker.h>
+
 R__LOAD_LIBRARY(libfun4all.so)
 R__LOAD_LIBRARY(libffamodules.so)
 R__LOAD_LIBRARY(libtwoTrackResonanceReco.so)
 R__LOAD_LIBRARY(libkfparticle_sphenix.so)
+R__LOAD_LIBRARY(libseed_checker.so)
 
 int Fun4All_D0_sim(const int nEvents = 10
                  , const string &outdir = "./"
@@ -67,7 +70,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   CDBInterface::instance()->Verbosity(1);
 
   recoConsts *rc = recoConsts::instance();
-  //rc->set_IntFlag("RANDOMSEED", 12345678);
+  rc->set_IntFlag("RANDOMSEED", processID);
 
   Input::VERBOSITY = 0;
 
@@ -275,6 +278,14 @@ int Fun4All_D0_sim(const int nEvents = 10
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_processID.str() + ".root";
 
+  output_dir += standard_or_poly +"/";
+  std::string makeDirectory = "mkdir -p " + output_dir;
+  system(makeDirectory.c_str());
+  seed_checker *myChecker = new seed_checker();
+  std::string seed_checker_name = output_dir + "seed_checker_" + nice_processID.str() +  standard_or_poly + ".root";
+  myChecker->setOutputFileName(seed_checker_name.c_str());
+  se->registerSubsystem(myChecker);
+
   std::string Dzero_reconstruction_name = "Dzero_reco" + simple +  standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string Dzero_output_file_name = header + Dzero_reconstruction_name + trailer;
   std::string Dzero_output_dir = output_dir + Dzero_reconstruction_name + "/";
@@ -290,7 +301,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroReco->setDaughterDCACut(0.05);
   myDzeroReco->setDIRACut(0.85);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
-  se->registerSubsystem(myDzeroReco);
+  //se->registerSubsystem(myDzeroReco);
 
   std::string KFParticle_Dzero_reconstruction_name = "Dzero_reco" + kfp + standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string KFParticle_Dzero_output_file_name = header + KFParticle_Dzero_reconstruction_name + trailer;
@@ -328,7 +339,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
   se->registerSubsystem(myDzeroKFParticle);
 
-  bool recoKshort = true;
+  bool recoKshort = false;
   std::string Kshort_output_dir, KFParticle_Kshort_output_dir, Kshort_output_reco_file, KFParticle_Kshort_output_reco_file;
   if (recoKshort)
   {
