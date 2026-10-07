@@ -414,7 +414,7 @@ int twoTrackResonanceReco::process_event(PHCompositeNode *topNode)
   {
     SvtxTrack *track = iter.second;
 
-    if (!hasSiliconClusters(track))
+    if (m_require_silicon && !hasSiliconClusters(track))
     {
       continue;
     }

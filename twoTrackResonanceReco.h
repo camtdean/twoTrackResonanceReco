@@ -105,6 +105,8 @@ class twoTrackResonanceReco : public SubsysReco
   // Magnitude of each daughter's momentum: true = TPC seed pT, false = ACTS fit
   void useTpcMomentum(bool use = true) { m_use_tpc_momentum = use; }
 
+  void requireSiliconClusters(bool use = true) { m_require_silicon = use; }
+
  private:
   struct Candidate
   {
@@ -188,6 +190,7 @@ class twoTrackResonanceReco : public SubsysReco
 
   bool m_use_silicon_direction{true};
   bool m_use_tpc_momentum{true};
+  bool m_require_silicon{true};
 
   bool m_use_dEdx_pid{false};
   bool m_can_get_dEdx{true};

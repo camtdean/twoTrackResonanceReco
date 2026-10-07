@@ -58,13 +58,13 @@ int Fun4All_D0_sim(const int nEvents = 10
   std::stringstream nice_processID;
   nice_processID << std::setw(5) << std::setfill('0') << std::to_string(processID);
 
-  int verbosity = 1;
+  int verbosity = 0;
 
   Fun4AllServer *se = Fun4AllServer::instance();
   se->Verbosity(verbosity);
 
-  PHRandomSeed::Verbosity(1);
-  CDBInterface::instance()->Verbosity(1);
+  PHRandomSeed::Verbosity(verbosity);
+  CDBInterface::instance()->Verbosity(verbosity);
 
   recoConsts *rc = recoConsts::instance();
   //rc->set_IntFlag("RANDOMSEED", processID);
@@ -122,7 +122,8 @@ int Fun4All_D0_sim(const int nEvents = 10
 
   InputRegister();
 
-  rc->set_IntFlag("RUNNUMBER", 79516); // Use a real run number to get the TPC dead maps
+  int runNumber = doPolytracking ? 1 : 79516;
+  rc->set_IntFlag("RUNNUMBER", runNumber); // Use a real run number to get the TPC dead maps
 
   SyncReco *sync = new SyncReco();
   se->registerSubsystem(sync);
@@ -190,7 +191,7 @@ int Fun4All_D0_sim(const int nEvents = 10
     se->registerSubsystem(converter);  
 
     auto *finder_svx = new PHSimpleVertexFinder("SiliconVertexFinder");
-    finder_svx->Verbosity(0);
+    finder_svx->Verbosity(verbosity);
     finder_svx->setDcaCut(0.1);
     finder_svx->setTrackPtCut(0.2);
     finder_svx->setBeamLineCut(1);
@@ -205,7 +206,9 @@ int Fun4All_D0_sim(const int nEvents = 10
     se->registerSubsystem(new Tpc_AssembledTrackReco());  // makes TPC_ASSEMBLEDTRACKS  
 
     auto *crossingFinder = new TpcCrossingFinder();
-    crossingFinder->Verbosity(0);
+    crossingFinder->Verbosity(verbosity);
+    crossingFinder->setCMVoltageDefault(387.5);
+    crossingFinder->setT0(0);
     crossingFinder->setTriggeredMode(true);
     crossingFinder->setIsNonDistortedMC(true);
     crossingFinder->setInputNodeName("TPC_ASSEMBLEDTRACKS");
@@ -215,6 +218,8 @@ int Fun4All_D0_sim(const int nEvents = 10
 
     auto *cluster = new Tpc_PolyClusterizer();  // makes TPC_POLYCLUSTERS
     cluster->setIsNonDistortedMC(true);
+    cluster->setCMVoltageDefault(387.5);
+    cluster->setT0(0);
     cluster->setUseSurveyGeometry(false);
     se->registerSubsystem(cluster);  
 
@@ -267,7 +272,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   InputManagers();
 
   std::string gen_type = doParticleGun ? "particleGun" : "pythia8";
-  std::string output_dir = "./output/";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/newRecoAndSuggestionFromYuri/";  // Top dir of where the output nTuples will be written
   std::string standard_or_poly = doPolytracking ? "_polyseeding" : "_caseeding";
   std::string kfp = "_KFParticle";
   std::string simple = "_twoTrackReco";
@@ -290,7 +295,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroReco->setDaughterDCACut(0.05);
   myDzeroReco->setDIRACut(0.85);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
-  //se->registerSubsystem(myDzeroReco);
+  se->registerSubsystem(myDzeroReco);
 
   std::string KFParticle_Dzero_reconstruction_name = "Dzero_reco" + kfp + standard_or_poly + "_" + gen_type;  // Used for naming output folder, file and node
   std::string KFParticle_Dzero_output_file_name = header + KFParticle_Dzero_reconstruction_name + trailer;
@@ -302,7 +307,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   system(makeDirectory.c_str());
 
   KFParticle_sPHENIX *myDzeroKFParticle = new KFParticle_sPHENIX(KFParticle_Dzero_reconstruction_name);
-  myDzeroKFParticle->Verbosity(0);
+  myDzeroKFParticle->Verbosity(verbosity);
   myDzeroKFParticle->setDecayDescriptor("[D0 -> K^- pi^+]cc");
   myDzeroKFParticle->dontUseGlobalVertex(true);
   myDzeroKFParticle->requireTrackVertexBunchCrossingMatch(true);
@@ -328,7 +333,7 @@ int Fun4All_D0_sim(const int nEvents = 10
   myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
   se->registerSubsystem(myDzeroKFParticle);
 
-  bool recoKshort = false;
+  bool recoKshort = true;
   std::string Kshort_output_dir, KFParticle_Kshort_output_dir, Kshort_output_reco_file, KFParticle_Kshort_output_reco_file;
   if (recoKshort)
   {

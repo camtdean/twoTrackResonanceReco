@@ -113,7 +113,7 @@ void Fun4All_twoTrackReco(
   float min_flight_distance = 0.05;
   float min_dira = 0.85;
 
-  std::string output_dir = "./output/openingAngle/";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/openingAngle//";  // Top dir of where the output nTuples will be written
   std::string header = "output_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";
@@ -125,17 +125,17 @@ void Fun4All_twoTrackReco(
   std::string Dzero_output_reco_file = Dzero_output_reco_dir + Dzero_output_file_name;
 
   std::string makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
-  system(makeDirectory.c_str());
+  //system(makeDirectory.c_str());
 
   twoTrackResonanceReco* myDzeroReco = new twoTrackResonanceReco("DzeroReco");
   myDzeroReco->setDaughterPDGIDs(321, 211);
   myDzeroReco->setMotherMassRange(1.7, 2.0);
-  myDzeroReco->setDaughterDCACut(track_to_track_DCA);
-  myDzeroReco->setDaughterIPCut(0.06);
-  myDzeroReco->setFlightDistanceCut(0.06);
+  myDzeroReco->setDaughterDCACut(0.05);
+  myDzeroReco->setDaughterIPCut(0.002);
+  myDzeroReco->setFlightDistanceCut(0.006);
   myDzeroReco->setDIRACut(min_dira);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
-  se->registerSubsystem(myDzeroReco);
+  //se->registerSubsystem(myDzeroReco);
 
   std::string Kshort_reconstruction_name = "Kshort_reco_twoTrackReco";  // Used for naming output folder, file and node
   std::string Kshort_output_file_name = header + Kshort_reconstruction_name + trailer;
@@ -153,7 +153,7 @@ void Fun4All_twoTrackReco(
   myKshortReco->setFlightDistanceCut(min_flight_distance);
   myKshortReco->setDIRACut(min_dira);
   myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
-  se->registerSubsystem(myKshortReco);
+  //se->registerSubsystem(myKshortReco);
 
   std::string KFParticle_Kshort_reconstruction_name = "Kshort_reco_KFParticle";  // Used for naming output folder, file and node
   std::string KFParticle_Kshort_output_file_name = header + KFParticle_Kshort_reconstruction_name + trailer;
@@ -189,7 +189,68 @@ void Fun4All_twoTrackReco(
   myKshortKFParticle->setMotherPV_DCA(999);
 
   myKshortKFParticle->setOutputName(KFParticle_Kshort_output_reco_file.c_str());
-  se->registerSubsystem(myKshortKFParticle);
+  //se->registerSubsystem(myKshortKFParticle);
+
+  std::string Lambda0_reconstruction_name = "Lambda0_reco_twoTrackReco";  // Used for naming output folder, file and node
+  std::string Lambda0_output_file_name = header + Lambda0_reconstruction_name + trailer;
+  std::string Lambda0_output_dir = output_dir + Lambda0_reconstruction_name + "/";
+  std::string Lambda0_output_reco_dir = Lambda0_output_dir + processing_folder;
+  std::string Lambda0_output_reco_file = Lambda0_output_reco_dir + Lambda0_output_file_name;
+
+  mass[0] = 1.08;
+  mass[1] = 1.15;
+
+  makeDirectory = "mkdir -p " + Lambda0_output_reco_dir;
+  system(makeDirectory.c_str());
+
+  twoTrackResonanceReco* myLambda0Reco = new twoTrackResonanceReco("Lambda0Reco");
+  myLambda0Reco->setDaughterPDGIDs(2212, 211);
+  myLambda0Reco->setMotherMassRange(mass[0], mass[1]);
+  myLambda0Reco->setDaughterDCACut(track_to_track_DCA);
+  myLambda0Reco->setDaughterIPCut(daughter_PV_DCA);
+  myLambda0Reco->setFlightDistanceCut(min_flight_distance);
+  myLambda0Reco->setDIRACut(min_dira);
+  myLambda0Reco->setOutputFileName(Lambda0_output_reco_file.c_str());
+  myLambda0Reco->requireSiliconClusters(false);
+  se->registerSubsystem(myLambda0Reco);
+
+  std::string KFParticle_Lambda0_reconstruction_name = "Lambda0_reco_KFParticle";  // Used for naming output folder, file and node
+  std::string KFParticle_Lambda0_output_file_name = header + KFParticle_Lambda0_reconstruction_name + trailer;
+  std::string KFParticle_Lambda0_output_dir = output_dir + KFParticle_Lambda0_reconstruction_name + "/";
+  std::string KFParticle_Lambda0_output_reco_dir = KFParticle_Lambda0_output_dir + processing_folder;
+  std::string KFParticle_Lambda0_output_reco_file = KFParticle_Lambda0_output_reco_dir + KFParticle_Lambda0_output_file_name;
+
+  makeDirectory = "mkdir -p " + KFParticle_Lambda0_output_reco_dir;
+  system(makeDirectory.c_str());
+
+  KFParticle_sPHENIX *myLambda0KFParticle = new KFParticle_sPHENIX(KFParticle_Lambda0_reconstruction_name);
+  myLambda0KFParticle->setDecayDescriptor("[Lambda0 -> proton^+ pi^-]cc");
+  myLambda0KFParticle->getDetectorInfo();
+  myLambda0KFParticle->dontUseGlobalVertex(true);
+  myLambda0KFParticle->requireTrackVertexBunchCrossingMatch(true);
+  myLambda0KFParticle->constrainToPrimaryVertex();
+  myLambda0KFParticle->usePID(false);
+  myLambda0KFParticle->allowZeroMassTracks();
+  myLambda0KFParticle->magFieldFile("FIELDMAP_TRACKING");
+  myLambda0KFParticle->saveOutput(true);
+
+  myLambda0KFParticle->setMinimumTrackPT(0.0);
+  myLambda0KFParticle->setMaximumTrackchi2nDOF(100.);
+  myLambda0KFParticle->setMinMVTXhits(0);
+  myLambda0KFParticle->setMinINTThits(0);
+  myLambda0KFParticle->setMinTPChits(0);
+  myLambda0KFParticle->setMinimumTrackPV_DCA(daughter_PV_DCA);
+
+  myLambda0KFParticle->setMinimumMass(mass[0]);
+  myLambda0KFParticle->setMaximumMass(mass[1]);
+  myLambda0KFParticle->setMaximumDaughterDCA(track_to_track_DCA);
+  myLambda0KFParticle->setDecayLengthRange(min_flight_distance, FLT_MAX);
+  myLambda0KFParticle->setMinDIRA(min_dira);
+  myLambda0KFParticle->setMotherPV_DCA(999);
+
+  myLambda0KFParticle->setOutputName(KFParticle_Lambda0_output_reco_file.c_str());
+  se->registerSubsystem(myLambda0KFParticle);
+
 
   se->skip(nSkip);
   se->run(nEvents);
@@ -214,6 +275,20 @@ void Fun4All_twoTrackReco(
   if (outfileKFParticle.good())
   {
     std::string moveOutput = "mv " + KFParticle_Kshort_output_reco_file + " " + KFParticle_Kshort_output_dir;
+    system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileLambda0(Lambda0_output_reco_file);
+  if (outfileLambda0.good())
+  {
+    std::string moveOutput = "mv " + Lambda0_output_reco_file + " " + Lambda0_output_dir;
+    system(moveOutput.c_str());
+  }
+
+  std::ifstream outfileL0KFParticle(KFParticle_Lambda0_output_reco_file);
+  if (outfileL0KFParticle.good())
+  {
+    std::string moveOutput = "mv " + KFParticle_Lambda0_output_reco_file + " " + KFParticle_Lambda0_output_dir;
     system(moveOutput.c_str());
   }
 
