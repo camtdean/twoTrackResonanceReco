@@ -12,4 +12,4 @@ job_lease_duration = 3600
 #Error              = $(condorDir)/condor.err
 Log                = /tmp/condori-data-$(process).log
 Arguments          = $(dstList)
-Queue dstList from inputDSTlists_run79516.txt
+Queue dstList from inputDSTlists.txt
