@@ -116,7 +116,7 @@ void Fun4All_twoTrackReco(
   momScale->setUseCDB(false);  // NNScaleMap defaults to CDB lookup; use the fixed local file instead
   momScale->setKappaLookupFile(momReweightFile.c_str());
   //momScale->setInputTrackMapName("SvtxTrackMap");
-  momScale->setOutputTrackMapName(momReweightTrackMap.c_tr());
+  momScale->setOutputTrackMapName(momReweightTrackMap.c_str());
   momScale->setScaleCovariance(true);
   se->registerSubsystem(momScale);
 
@@ -163,6 +163,7 @@ void Fun4All_twoTrackReco(
   myDzeroReco->setDIRACut(D0_min_dira);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
   myDzeroReco->setTrackMapName(momReweightTrackMap.c_str());
+  myDzeroReco->suseTpcMomentum(false);
   se->registerSubsystem(myDzeroReco);
 
  /*
@@ -178,7 +179,7 @@ void Fun4All_twoTrackReco(
   if (enableLightFlavor) system(makeDirectory.c_str());
 
   KFParticle_sPHENIX *myDzeroKFParticle = new KFParticle_sPHENIX(KFParticle_Dzero_reconstruction_name);
-  myDzeroKFParticle->setDecayDescriptor("K_S0 -> pi^+ pi^-");
+  myDzeroKFParticle->setDecayDescriptor("[D0 -> K^- pi^+]cc");
   myDzeroKFParticle->getDetectorInfo();
   myDzeroKFParticle->get_dEdx_info();
   myDzeroKFParticle->dontUseGlobalVertex();
@@ -229,6 +230,7 @@ void Fun4All_twoTrackReco(
   myKshortReco->setDIRACut(min_dira);
   myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
   myKshortReco->setTrackMapName(momReweightTrackMap.c_str());
+  myKshortReco->suseTpcMomentum(false);
   if (enableLightFlavor) se->registerSubsystem(myKshortReco);
 
  /*
