@@ -34,11 +34,11 @@ if [[ "${useScratch}" == true ]]; then
   fi
 fi
 
-nEvents=0
+nEvents=2000
 inputList=$1
 nSkip=0
 
-runOneAtATime=true
+runOneAtATime=false
 
 echo running: runData.sh $*
 echo Running particle reconstruction with Fun4All_twoTrackReco.C
@@ -69,4 +69,4 @@ fi
 
 echo Script done
 
-# Note, to split a single run list into multiple run lists do gsplit -l 100 -d --additional-suffix=.txt run79516.list run79516_ (remove the first g on linux)
+# Note, to split a single run list into multiple run lists do split -l 100 -a 4 -d --additional-suffix=.list run79516.list run79516_ (remove the first g on linux)

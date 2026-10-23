@@ -13,6 +13,7 @@
 
 #include <twotrackresonancereco/twoTrackResonanceReco.h>
 
+#include <globalvertex/GlobalVertexReco.h>
 #include <kfparticle_sphenix/KFParticle_sPHENIX.h>
 #include <nnscalemap/nnscalemap.h>
 
@@ -108,17 +109,21 @@ void Fun4All_twoTrackReco(
   }
   se->registerInputManager(tracks);
 
-  bool enableLightFlavor = (10000 < segment && segment < 15000) ? true : false; //Dont need a huge amount of V0, and only look at ones that werent trained on
-  std::string momReweightFile = "/sphenix/u/cdean/analysis/NNScaleMap/run" + std::to_string(runnumber) + "/kappa_lookup.csv";
+  bool enableLightFlavor = true; //(segment < 2000) ? true : false; //Dont need a huge amount of V0, and only look at ones that werent trained on
+  bool doRescale = false;
+  std::string rescaleFolder = runnumber < 80000 ? "run79514_to_79516" : "run81603_to_81612";
+  std::string momReweightFile = "/sphenix/u/cdean/analysis/NNScaleMap/" + rescaleFolder + "/kappa_lookup.csv";
   std::string momReweightTrackMap = "SvtxTrackMapMomentumScaleCorrected";
 
   auto* momScale = new NNScaleMap("NNScaleMap"); 
   momScale->setUseCDB(false);  // NNScaleMap defaults to CDB lookup; use the fixed local file instead
   momScale->setKappaLookupFile(momReweightFile.c_str());
-  //momScale->setInputTrackMapName("SvtxTrackMap");
   momScale->setOutputTrackMapName(momReweightTrackMap.c_str());
   momScale->setScaleCovariance(true);
-  se->registerSubsystem(momScale);
+  if (doRescale) se->registerSubsystem(momScale);
+
+  GlobalVertexReco* gblvertex = new GlobalVertexReco();
+  se->registerSubsystem(gblvertex);
 
   //Shared light flavor cuts
   float KS0_mass[2] = {0.4, 0.6};
@@ -126,8 +131,8 @@ void Fun4All_twoTrackReco(
   float track_to_track_DCA = 0.1;
   float daughter_PV_DCA = 0.05;
   float daughter_PV_DCA_XY = 0.05;
-  float min_flight_distance = 0.2;
-  float min_dira = 0.85;
+  float min_flight_distance = 0.8;
+  float min_dira = 0.95;
 
   //Shared D0 cuts
   float D0_mass[2] = {1.7, 2.0};
@@ -137,7 +142,7 @@ void Fun4All_twoTrackReco(
   float D0_min_flight_distance = 0.006;
   float D0_min_dira = 0.95;
 
-  std::string output_dir = "./output/afterMLmomentum/";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/test_track_v5/";  // Top dir of where the output nTuples will be written
   std::string header = "output_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";
@@ -162,9 +167,9 @@ void Fun4All_twoTrackReco(
   myDzeroReco->setFlightDistanceCut(D0_min_flight_distance);
   myDzeroReco->setDIRACut(D0_min_dira);
   myDzeroReco->setOutputFileName(Dzero_output_reco_file.c_str());
-  myDzeroReco->setTrackMapName(momReweightTrackMap.c_str());
-  myDzeroReco->suseTpcMomentum(false);
-  se->registerSubsystem(myDzeroReco);
+  if (doRescale) myDzeroReco->setTrackMapName(momReweightTrackMap.c_str());
+  myDzeroReco->useTpcMomentum(false);
+  //se->registerSubsystem(myDzeroReco);
 
  /*
   *  D0 KFParticle 
@@ -176,7 +181,7 @@ void Fun4All_twoTrackReco(
   std::string KFParticle_Dzero_output_reco_file = KFParticle_Dzero_output_reco_dir + KFParticle_Dzero_output_file_name;
 
   makeDirectory = "mkdir -p " + KFParticle_Dzero_output_reco_dir;
-  if (enableLightFlavor) system(makeDirectory.c_str());
+  system(makeDirectory.c_str());
 
   KFParticle_sPHENIX *myDzeroKFParticle = new KFParticle_sPHENIX(KFParticle_Dzero_reconstruction_name);
   myDzeroKFParticle->setDecayDescriptor("[D0 -> K^- pi^+]cc");
@@ -188,7 +193,7 @@ void Fun4All_twoTrackReco(
   myDzeroKFParticle->usePID(false);
   myDzeroKFParticle->allowZeroMassTracks();
   myDzeroKFParticle->magFieldFile("FIELDMAP_TRACKING");
-  myDzeroKFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
+  if (doRescale) myDzeroKFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
   myDzeroKFParticle->saveOutput();
 
   myDzeroKFParticle->setMinimumTrackPT(0.0);
@@ -208,7 +213,7 @@ void Fun4All_twoTrackReco(
   myDzeroKFParticle->setMaximumVertexchi2nDOF(FLT_MAX);
 
   myDzeroKFParticle->setOutputName(KFParticle_Dzero_output_reco_file.c_str());
-  if (enableLightFlavor) se->registerSubsystem(myDzeroKFParticle);
+  //se->registerSubsystem(myDzeroKFParticle);
 
  /*
   *  KS0 twoTrackReco
@@ -229,9 +234,9 @@ void Fun4All_twoTrackReco(
   myKshortReco->setFlightDistanceCut(min_flight_distance);
   myKshortReco->setDIRACut(min_dira);
   myKshortReco->setOutputFileName(Kshort_output_reco_file.c_str());
-  myKshortReco->setTrackMapName(momReweightTrackMap.c_str());
-  myKshortReco->suseTpcMomentum(false);
-  if (enableLightFlavor) se->registerSubsystem(myKshortReco);
+  if (doRescale) myKshortReco->setTrackMapName(momReweightTrackMap.c_str());
+  myKshortReco->useTpcMomentum(false);
+  //if (enableLightFlavor) se->registerSubsystem(myKshortReco);
 
  /*
   *  KS0 KFParticle 
@@ -255,14 +260,14 @@ void Fun4All_twoTrackReco(
   myKshortKFParticle->usePID(false);
   myKshortKFParticle->allowZeroMassTracks();
   myKshortKFParticle->magFieldFile("FIELDMAP_TRACKING");
-  myKshortKFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
+  if (doRescale) myKshortKFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
   myKshortKFParticle->saveOutput();
 
   myKshortKFParticle->setMinimumTrackPT(0.0);
   myKshortKFParticle->setMaximumTrackchi2nDOF(300.);
-  myKshortKFParticle->setMinMVTXhits(0);
-  myKshortKFParticle->setMinINTThits(0);
-  myKshortKFParticle->setMinTPChits(0);
+  myKshortKFParticle->setMinMVTXhits(1);
+  myKshortKFParticle->setMinINTThits(1);
+  myKshortKFParticle->setMinTPChits(20);
   myKshortKFParticle->setMinimumTrackPV_DCA(daughter_PV_DCA);
   myKshortKFParticle->setMinimumTrackPV_DCA_XY(daughter_PV_DCA_XY);
 
@@ -322,19 +327,19 @@ void Fun4All_twoTrackReco(
   myLambda0KFParticle->usePID(false);
   myLambda0KFParticle->allowZeroMassTracks();
   myLambda0KFParticle->magFieldFile("FIELDMAP_TRACKING");
-  myLambda0KFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
+  if (doRescale) myLambda0KFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
   myLambda0KFParticle->saveOutput();
 
   myLambda0KFParticle->setMinimumTrackPT(0.0);
   myLambda0KFParticle->setMaximumTrackchi2nDOF(300.);
-  myLambda0KFParticle->setMinMVTXhits(0);
-  myLambda0KFParticle->setMinINTThits(0);
-  myLambda0KFParticle->setMinTPChits(0);
+  myLambda0KFParticle->setMinMVTXhits(1);
+  myLambda0KFParticle->setMinINTThits(1);
+  myLambda0KFParticle->setMinTPChits(20);
   myLambda0KFParticle->setMinimumTrackPV_DCA(daughter_PV_DCA);
   myLambda0KFParticle->setMinimumTrackPV_DCA_XY(daughter_PV_DCA_XY);
 
-  myLambda0KFParticle->setMinimumMass(mass[0]);
-  myLambda0KFParticle->setMaximumMass(mass[1]);
+  myLambda0KFParticle->setMinimumMass(L0_mass[0]);
+  myLambda0KFParticle->setMaximumMass(L0_mass[1]);
   myLambda0KFParticle->setMaximumDaughterDCA(track_to_track_DCA);
   myLambda0KFParticle->setDecayLengthRange(min_flight_distance, 40);
   myLambda0KFParticle->setMinDIRA(min_dira);
