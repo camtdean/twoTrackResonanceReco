@@ -7,6 +7,7 @@
 #include <GlobalVariables.C>
 
 #include <G4_ActsGeom.C>
+#include <QA.C>
 #include <Trkr_RecoInit.C>
 
 #include <cdbobjects/CDBTTree.h>
@@ -142,11 +143,14 @@ void Fun4All_twoTrackReco(
   float D0_min_flight_distance = 0.006;
   float D0_min_dira = 0.95;
 
-  std::string output_dir = "./output/test_track_v5/";  // Top dir of where the output nTuples will be written
+  std::string output_dir = "./output/test_qa/";  // Top dir of where the output nTuples will be written
   std::string header = "output_";
   std::string processing_folder = "inReconstruction/";
   std::string trailer = "_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + ".root";
 
+  TString qaname = output_dir + "qaOut/HIST_" + nice_runnumber.str() + "_" + nice_segment.str() + "_" + nice_skip.str() + "_QA.root";
+  std::string makeDirectory = "mkdir -p " + output_dir + "qaOut";
+  system(makeDirectory.c_str());
  /*
   *  D0 twoTrackReco
   */
@@ -156,7 +160,8 @@ void Fun4All_twoTrackReco(
   std::string Dzero_output_reco_dir = Dzero_output_dir + processing_folder;
   std::string Dzero_output_reco_file = Dzero_output_reco_dir + Dzero_output_file_name;
 
-  std::string makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
+  makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
+  //std::string makeDirectory = "mkdir -p " + Dzero_output_reco_dir;
   system(makeDirectory.c_str());
 
   twoTrackResonanceReco* myDzeroReco = new twoTrackResonanceReco("DzeroReco");
@@ -262,6 +267,7 @@ void Fun4All_twoTrackReco(
   myKshortKFParticle->magFieldFile("FIELDMAP_TRACKING");
   if (doRescale) myKshortKFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
   myKshortKFParticle->saveOutput();
+  myKshortKFParticle->saveLightweightNTupleToQA();
 
   myKshortKFParticle->setMinimumTrackPT(0.0);
   myKshortKFParticle->setMaximumTrackchi2nDOF(300.);
@@ -329,6 +335,7 @@ void Fun4All_twoTrackReco(
   myLambda0KFParticle->magFieldFile("FIELDMAP_TRACKING");
   if (doRescale) myLambda0KFParticle->setTrackMapNodeName(momReweightTrackMap.c_str());
   myLambda0KFParticle->saveOutput();
+  myLambda0KFParticle->saveLightweightNTupleToQA();
 
   myLambda0KFParticle->setMinimumTrackPT(0.0);
   myLambda0KFParticle->setMaximumTrackchi2nDOF(300.);
@@ -353,6 +360,9 @@ void Fun4All_twoTrackReco(
   se->run(nEvents);
   se->End();
   se->PrintTimer();
+
+  std::string qaOutputFileName(qaname.Data());
+  QA_Output(qaOutputFileName);
 
   std::ifstream outfileDzero(Dzero_output_reco_file);
   if (outfileDzero.good())
